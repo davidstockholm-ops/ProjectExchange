@@ -11,11 +11,13 @@ namespace ProjectExchange.Core.Drake;
 public class DrakeOracleService
 {
     private readonly IOrderBookStore _orderBookStore;
+    private readonly IOutcomeRegistry? _outcomeRegistry;
     private readonly ConcurrentDictionary<Guid, MarketEvent> _events = new();
 
-    public DrakeOracleService(IOrderBookStore orderBookStore)
+    public DrakeOracleService(IOrderBookStore orderBookStore, IOutcomeRegistry? outcomeRegistry = null)
     {
         _orderBookStore = orderBookStore ?? throw new ArgumentNullException(nameof(orderBookStore));
+        _outcomeRegistry = outcomeRegistry;
     }
 
     /// <summary>Raised when Drake simulates a trade. CopyTradingEngine subscribes and posts to the ledger.</summary>
@@ -42,6 +44,7 @@ public class DrakeOracleService
         var evt = new MarketEvent(id, title, type, outcomeId, effectiveDuration, now, expiresAt);
         _events[id] = evt;
 
+        _outcomeRegistry?.Register(outcomeId);
         _orderBookStore.GetOrCreateOrderBook(outcomeId);
         MarketOpened?.Invoke(this, new MarketOpenedEventArgs(evt));
 

@@ -30,13 +30,22 @@ public class MarketIntegrationTests
         var sellerId = Guid.NewGuid();
         var buyerAccount = new Account(Guid.NewGuid(), "Buyer", AccountType.Asset, buyerId);
         var sellerAccount = new Account(Guid.NewGuid(), "Seller", AccountType.Asset, sellerId);
+        var sinkId = Guid.NewGuid();
+        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId);
         await accountRepo.CreateAsync(buyerAccount);
         await accountRepo.CreateAsync(sellerAccount);
+        await accountRepo.CreateAsync(sinkAccount);
 
         const string outcomeId = "outcome-e2e";
         const decimal price = 0.50m;
         const decimal quantity = 20m;
         decimal amount = price * quantity;
+
+        await ledgerService.PostTransactionAsync(new List<JournalEntry>
+        {
+            new(buyerAccount.Id, amount, EntryType.Debit, SettlementPhase.Clearing),
+            new(sinkAccount.Id, amount, EntryType.Credit, SettlementPhase.Clearing)
+        });
 
         var bid = new Order(Guid.NewGuid(), buyerId, outcomeId, OrderType.Bid, 0.60m, quantity);
         var ask = new Order(Guid.NewGuid(), sellerId, outcomeId, OrderType.Ask, price, quantity);
@@ -54,9 +63,9 @@ public class MarketIntegrationTests
 
         var buyerBalance = await ledgerService.GetAccountBalanceAsync(buyerAccount.Id, null);
         var sellerBalance = await ledgerService.GetAccountBalanceAsync(sellerAccount.Id, null);
-        Assert.Equal(amount, buyerBalance);
+        Assert.Equal(amount * 2, buyerBalance);
         Assert.Equal(-amount, sellerBalance);
-        Assert.Equal(0m, buyerBalance + sellerBalance);
+        Assert.Equal(amount, buyerBalance + sellerBalance);
     }
 
     [Fact]
@@ -90,8 +99,17 @@ public class MarketIntegrationTests
         var sellerId = Guid.NewGuid();
         var buyerAccount = new Account(Guid.NewGuid(), "Buyer", AccountType.Asset, buyerId);
         var sellerAccount = new Account(Guid.NewGuid(), "Seller", AccountType.Asset, sellerId);
+        var sinkId = Guid.NewGuid();
+        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId);
         await accountRepo.CreateAsync(buyerAccount);
         await accountRepo.CreateAsync(sellerAccount);
+        await accountRepo.CreateAsync(sinkAccount);
+
+        await ledgerService.PostTransactionAsync(new List<JournalEntry>
+        {
+            new(buyerAccount.Id, 50m, EntryType.Debit, SettlementPhase.Clearing),
+            new(sinkAccount.Id, 50m, EntryType.Credit, SettlementPhase.Clearing)
+        });
 
         const string outcomeId = "outcome-multi";
         const decimal askPrice = 0.50m;
@@ -119,23 +137,32 @@ public class MarketIntegrationTests
         decimal totalBuyerDebit = tradeTxns.Sum(t => t.TotalAmount);
         Assert.Equal(30m * askPrice + 30m * askPrice + 40m * askPrice, totalBuyerDebit);
         Assert.Equal(50m, totalBuyerDebit);
+        Assert.Equal(100m, await ledgerService.GetAccountBalanceAsync(buyerAccount.Id, null));
 
         var buyerBalance = await ledgerService.GetAccountBalanceAsync(buyerAccount.Id, null);
         var sellerBalance = await ledgerService.GetAccountBalanceAsync(sellerAccount.Id, null);
-        Assert.Equal(50m, buyerBalance);
+        Assert.Equal(100m, buyerBalance);
         Assert.Equal(-50m, sellerBalance);
-        Assert.Equal(0m, buyerBalance + sellerBalance);
+        Assert.Equal(50m, buyerBalance + sellerBalance);
     }
 
     [Fact]
     public async Task PlaceOrder_MatchWhereSellerHasNoAccount_ThrowsInvalidOperationException()
     {
-        var (accountRepo, _, _, marketService) = CreateMarketStack();
+        var (accountRepo, _, ledgerService, marketService) = CreateMarketStack();
 
         var buyerId = Guid.NewGuid();
         var sellerId = Guid.NewGuid();
         var buyerAccount = new Account(Guid.NewGuid(), "Buyer", AccountType.Asset, buyerId);
+        var sinkId = Guid.NewGuid();
+        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId);
         await accountRepo.CreateAsync(buyerAccount);
+        await accountRepo.CreateAsync(sinkAccount);
+        await ledgerService.PostTransactionAsync(new List<JournalEntry>
+        {
+            new(buyerAccount.Id, 5m, EntryType.Debit, SettlementPhase.Clearing),
+            new(sinkAccount.Id, 5m, EntryType.Credit, SettlementPhase.Clearing)
+        });
 
         const string outcomeId = "outcome-no-seller";
         var ask = new Order(Guid.NewGuid(), sellerId, outcomeId, OrderType.Ask, 0.50m, 10m);

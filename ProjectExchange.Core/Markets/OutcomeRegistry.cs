@@ -1,0 +1,20 @@
+using System.Collections.Concurrent;
+
+namespace ProjectExchange.Core.Markets;
+
+/// <summary>
+/// In-memory registry of valid outcome IDs. Outcomes are registered when a market is opened (e.g. DrakeOracleService).
+/// </summary>
+public class OutcomeRegistry : IOutcomeRegistry
+{
+    private readonly ConcurrentDictionary<string, byte> _outcomes = new();
+
+    public bool IsValid(string outcomeId) => !string.IsNullOrWhiteSpace(outcomeId) && _outcomes.ContainsKey(outcomeId.Trim());
+
+    public void Register(string outcomeId)
+    {
+        if (string.IsNullOrWhiteSpace(outcomeId))
+            return;
+        _outcomes.TryAdd(outcomeId.Trim(), 0);
+    }
+}

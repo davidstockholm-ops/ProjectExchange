@@ -43,6 +43,8 @@ public class GrandFinalIntegrationTests
         var fan4Account = new Account(Guid.NewGuid(), "Fan4", AccountType.Asset, fan4Id);
         var fan5Account = new Account(Guid.NewGuid(), "Fan5", AccountType.Asset, fan5Id);
 
+        var sinkId = Guid.NewGuid();
+        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId);
         await accountRepo.CreateAsync(drakeAccount);
         await accountRepo.CreateAsync(lpAccount);
         await accountRepo.CreateAsync(fan1Account);
@@ -50,6 +52,18 @@ public class GrandFinalIntegrationTests
         await accountRepo.CreateAsync(fan3Account);
         await accountRepo.CreateAsync(fan4Account);
         await accountRepo.CreateAsync(fan5Account);
+        await accountRepo.CreateAsync(sinkAccount);
+
+        await ledgerService.PostTransactionAsync(new List<JournalEntry>
+        {
+            new(drakeAccount.Id, 25m, EntryType.Debit, SettlementPhase.Clearing),
+            new(fan1Account.Id, 5m, EntryType.Debit, SettlementPhase.Clearing),
+            new(fan2Account.Id, 5m, EntryType.Debit, SettlementPhase.Clearing),
+            new(fan3Account.Id, 5m, EntryType.Debit, SettlementPhase.Clearing),
+            new(fan4Account.Id, 5m, EntryType.Debit, SettlementPhase.Clearing),
+            new(fan5Account.Id, 5m, EntryType.Debit, SettlementPhase.Clearing),
+            new(sinkAccount.Id, 50m, EntryType.Credit, SettlementPhase.Clearing)
+        });
 
         copyTradingService.Follow(fan1Id, drakeId);
         copyTradingService.Follow(fan2Id, drakeId);
@@ -79,12 +93,12 @@ public class GrandFinalIntegrationTests
         var fan5Balance = await ledgerService.GetAccountBalanceAsync(fan5Account.Id, null);
         var lpBalance = await ledgerService.GetAccountBalanceAsync(lpAccount.Id, null);
 
-        Assert.Equal(25m, drakeBalance);
-        Assert.Equal(5m, fan1Balance);
-        Assert.Equal(5m, fan2Balance);
-        Assert.Equal(5m, fan3Balance);
-        Assert.Equal(5m, fan4Balance);
-        Assert.Equal(5m, fan5Balance);
+        Assert.Equal(50m, drakeBalance);
+        Assert.Equal(10m, fan1Balance);
+        Assert.Equal(10m, fan2Balance);
+        Assert.Equal(10m, fan3Balance);
+        Assert.Equal(10m, fan4Balance);
+        Assert.Equal(10m, fan5Balance);
         Assert.Equal(-50m, lpBalance);
 
         var book = marketService.GetOrderBook(outcomeId);

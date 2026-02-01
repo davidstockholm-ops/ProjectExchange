@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore.Storage;
 using ProjectExchange.Accounting.Domain.Abstractions;
 using ProjectExchange.Accounting.Domain.Entities;
 using ProjectExchange.Accounting.Domain.Enums;
+using ProjectExchange.Accounting.Domain.Exceptions;
+using ProjectExchange.Accounting.Domain.Services;
 using ProjectExchange.Core.Infrastructure.Persistence;
 using ProjectExchange.Core.Social;
 
@@ -10,6 +12,7 @@ namespace ProjectExchange.Core.Markets;
 /// <summary>
 /// Places orders, runs matching, and records each match in the ledger as a Trade.
 /// Uses <see cref="IDbContextTransaction"/> so ledger updates and order-book updates succeed or fail together (atomicity).
+/// Rejects orders for unregistered outcomes (if IOutcomeRegistry provided) and insufficient buyer funds.
 /// After a successful placement, if the user is a Master (has followers), mirrors the order for each follower via CopyTradingService.
 /// </summary>
 public class MarketService
@@ -19,19 +22,25 @@ public class MarketService
     private readonly ITransactionRepository _transactionRepository;
     private readonly ProjectExchangeDbContext _dbContext;
     private readonly CopyTradingService _copyTradingService;
+    private readonly LedgerService _ledgerService;
+    private readonly IOutcomeRegistry? _outcomeRegistry;
 
     public MarketService(
         IOrderBookStore orderBookStore,
         IAccountRepository accountRepository,
         ITransactionRepository transactionRepository,
         ProjectExchangeDbContext dbContext,
-        CopyTradingService copyTradingService)
+        CopyTradingService copyTradingService,
+        LedgerService ledgerService,
+        IOutcomeRegistry? outcomeRegistry = null)
     {
         _orderBookStore = orderBookStore ?? throw new ArgumentNullException(nameof(orderBookStore));
         _accountRepository = accountRepository ?? throw new ArgumentNullException(nameof(accountRepository));
         _transactionRepository = transactionRepository ?? throw new ArgumentNullException(nameof(transactionRepository));
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _copyTradingService = copyTradingService ?? throw new ArgumentNullException(nameof(copyTradingService));
+        _ledgerService = ledgerService ?? throw new ArgumentNullException(nameof(ledgerService));
+        _outcomeRegistry = outcomeRegistry;
     }
 
     /// <summary>
@@ -48,6 +57,9 @@ public class MarketService
     {
         if (order == null)
             throw new ArgumentNullException(nameof(order));
+
+        if (_outcomeRegistry != null && !_outcomeRegistry.IsValid(order.OutcomeId))
+            throw new InvalidOutcomeException(order.OutcomeId);
 
         var book = _orderBookStore.GetOrCreateOrderBook(order.OutcomeId);
         book.AddOrder(order);
@@ -71,6 +83,10 @@ public class MarketService
                     var buyerAccountId = buyerAccounts[0].Id;
                     var sellerAccountId = sellerAccounts[0].Id;
                     decimal amount = match.Price * match.Quantity;
+
+                    var buyerBalance = await _ledgerService.GetAccountBalanceAsync(buyerAccountId, SettlementPhase.Clearing, cancellationToken);
+                    if (buyerBalance < amount)
+                        throw new InsufficientFundsException(amount, buyerBalance);
 
                     var entries = new List<JournalEntry>
                     {

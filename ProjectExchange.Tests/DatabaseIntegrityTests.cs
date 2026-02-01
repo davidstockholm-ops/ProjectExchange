@@ -32,7 +32,8 @@ public class DatabaseIntegrityTests
 
         var orderBookStore = new OrderBookStore();
         var copyTradingService = new CopyTradingService();
-        var marketService = new MarketService(orderBookStore, accountRepo, throwingRepo, context, copyTradingService);
+        var ledgerService = scope.ServiceProvider.GetRequiredService<LedgerService>();
+        var marketService = new MarketService(orderBookStore, accountRepo, throwingRepo, context, copyTradingService, ledgerService);
 
         var seller1Id = Guid.NewGuid();
         var seller2Id = Guid.NewGuid();
@@ -40,9 +41,18 @@ public class DatabaseIntegrityTests
         var seller1Account = new Account(Guid.NewGuid(), "Seller1", AccountType.Asset, seller1Id);
         var seller2Account = new Account(Guid.NewGuid(), "Seller2", AccountType.Asset, seller2Id);
         var buyerAccount = new Account(Guid.NewGuid(), "Buyer", AccountType.Asset, buyerId);
+        var sinkId = Guid.NewGuid();
+        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId);
         await accountRepo.CreateAsync(seller1Account);
         await accountRepo.CreateAsync(seller2Account);
         await accountRepo.CreateAsync(buyerAccount);
+        await accountRepo.CreateAsync(sinkAccount);
+
+        await ledgerService.PostTransactionAsync(new List<JournalEntry>
+        {
+            new(buyerAccount.Id, 25m, EntryType.Debit, SettlementPhase.Clearing),
+            new(sinkAccount.Id, 25m, EntryType.Credit, SettlementPhase.Clearing)
+        });
 
         const string outcomeId = "outcome-rollback";
         var ask1 = new Order(Guid.NewGuid(), seller1Id, outcomeId, OrderType.Ask, 0.50m, 50m);
@@ -55,12 +65,12 @@ public class DatabaseIntegrityTests
         await Assert.ThrowsAsync<DbUpdateException>(async () =>
             await marketService.PlaceOrderAsync(bid));
 
-        var ledgerService = scope.ServiceProvider.GetRequiredService<LedgerService>();
+        context.ChangeTracker.Clear();
         var buyerBalance = await ledgerService.GetAccountBalanceAsync(buyerAccount.Id, null);
         var seller1Balance = await ledgerService.GetAccountBalanceAsync(seller1Account.Id, null);
         var seller2Balance = await ledgerService.GetAccountBalanceAsync(seller2Account.Id, null);
 
-        Assert.Equal(0m, buyerBalance);
+        Assert.Equal(25m, buyerBalance);
         Assert.Equal(0m, seller1Balance);
         Assert.Equal(0m, seller2Balance);
     }
@@ -197,6 +207,20 @@ public class DatabaseIntegrityTests
         await accountRepo.CreateAsync(fan3Account);
         await accountRepo.CreateAsync(fan4Account);
         await accountRepo.CreateAsync(fan5Account);
+
+        var sinkId = Guid.NewGuid();
+        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId);
+        await accountRepo.CreateAsync(sinkAccount);
+        await ledgerService.PostTransactionAsync(new List<JournalEntry>
+        {
+            new(drakeAccount.Id, 25m, EntryType.Debit, SettlementPhase.Clearing),
+            new(fan1Account.Id, 5m, EntryType.Debit, SettlementPhase.Clearing),
+            new(fan2Account.Id, 5m, EntryType.Debit, SettlementPhase.Clearing),
+            new(fan3Account.Id, 5m, EntryType.Debit, SettlementPhase.Clearing),
+            new(fan4Account.Id, 5m, EntryType.Debit, SettlementPhase.Clearing),
+            new(fan5Account.Id, 5m, EntryType.Debit, SettlementPhase.Clearing),
+            new(sinkAccount.Id, 50m, EntryType.Credit, SettlementPhase.Clearing)
+        });
 
         copyTradingService.Follow(fan1Id, drakeId);
         copyTradingService.Follow(fan2Id, drakeId);

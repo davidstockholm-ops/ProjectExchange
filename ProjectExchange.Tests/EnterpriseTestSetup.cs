@@ -76,7 +76,7 @@ public static class EnterpriseTestSetup
         var ledgerService = scope.ServiceProvider.GetRequiredService<LedgerService>();
         var orderBookStore = new OrderBookStore();
         var copyTradingService = new CopyTradingService();
-        var marketService = new MarketService(orderBookStore, accountRepo, transactionRepo, context, copyTradingService);
+        var marketService = new MarketService(orderBookStore, accountRepo, transactionRepo, context, copyTradingService, ledgerService);
         return (accountRepo, transactionRepo, ledgerService, marketService, orderBookStore);
     }
 
@@ -122,7 +122,7 @@ public static class EnterpriseTestSetup
         var ledgerService = scope.ServiceProvider.GetRequiredService<LedgerService>();
         var orderBookStore = new OrderBookStore();
         var copyTradingService = new CopyTradingService();
-        var marketService = new MarketService(orderBookStore, accountRepo, transactionRepo, context, copyTradingService);
+        var marketService = new MarketService(orderBookStore, accountRepo, transactionRepo, context, copyTradingService, ledgerService);
         return (accountRepo, ledgerService, copyTradingService, marketService);
     }
 
@@ -183,7 +183,7 @@ public static class EnterpriseTestSetup
         var ledgerService = scope.ServiceProvider.GetRequiredService<LedgerService>();
         var orderBookStore = new OrderBookStore();
         var copyTradingService = new CopyTradingService();
-        var marketService = new MarketService(orderBookStore, accountRepo, transactionRepo, context, copyTradingService);
+        var marketService = new MarketService(orderBookStore, accountRepo, transactionRepo, context, copyTradingService, ledgerService);
         var oracle = new DrakeOracleService(orderBookStore);
         return (accountRepo, ledgerService, copyTradingService, marketService, oracle, context);
     }

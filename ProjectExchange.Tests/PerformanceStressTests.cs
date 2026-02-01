@@ -38,19 +38,31 @@ public class PerformanceStressTests
         var orderBookStore = new OrderBookStore();
         var copyTradingService = new CopyTradingService();
         var transactionRepo = scope.ServiceProvider.GetRequiredService<ITransactionRepository>();
-        var marketService = new MarketService(orderBookStore, accountRepo, transactionRepo, context, copyTradingService);
+        var marketService = new MarketService(orderBookStore, accountRepo, transactionRepo, context, copyTradingService, ledgerService);
 
         var buyerIds = new List<Guid>();
         var sellerIds = new List<Guid>();
+        var buyerAccountIds = new List<Guid>();
+        var sinkId = Guid.NewGuid();
+        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId);
+        await accountRepo.CreateAsync(sinkAccount);
         for (int i = 0; i < orderCount; i++)
         {
             var buyerId = Guid.NewGuid();
             var sellerId = Guid.NewGuid();
             buyerIds.Add(buyerId);
             sellerIds.Add(sellerId);
-            await accountRepo.CreateAsync(new Account(Guid.NewGuid(), $"Buyer{i}", AccountType.Asset, buyerId));
+            var buyerAcc = new Account(Guid.NewGuid(), $"Buyer{i}", AccountType.Asset, buyerId);
+            await accountRepo.CreateAsync(buyerAcc);
+            buyerAccountIds.Add(buyerAcc.Id);
             await accountRepo.CreateAsync(new Account(Guid.NewGuid(), $"Seller{i}", AccountType.Asset, sellerId));
         }
+
+        var fundingEntries = new List<JournalEntry>();
+        foreach (var accId in buyerAccountIds)
+            fundingEntries.Add(new JournalEntry(accId, quantityPerOrder * price, EntryType.Debit, SettlementPhase.Clearing));
+        fundingEntries.Add(new JournalEntry(sinkAccount.Id, orderCount * quantityPerOrder * price, EntryType.Credit, SettlementPhase.Clearing));
+        await ledgerService.PostTransactionAsync(fundingEntries);
 
         var buyOrders = buyerIds.Select((id, i) => new Order(Guid.NewGuid(), id, outcomeId, OrderType.Bid, price, quantityPerOrder)).ToList();
         var sellOrders = sellerIds.Select((id, i) => new Order(Guid.NewGuid(), id, outcomeId, OrderType.Ask, price, quantityPerOrder)).ToList();
@@ -90,13 +102,28 @@ public class PerformanceStressTests
         await accountRepo.CreateAsync(lpAccount);
 
         var fanIds = new List<Guid>();
+        var fanAccountIds = new List<Guid>();
         for (int i = 0; i < followerCount; i++)
         {
             var fanId = Guid.NewGuid();
             fanIds.Add(fanId);
-            await accountRepo.CreateAsync(new Account(Guid.NewGuid(), $"Fan{i}", AccountType.Asset, fanId));
+            var fanAcc = new Account(Guid.NewGuid(), $"Fan{i}", AccountType.Asset, fanId);
+            await accountRepo.CreateAsync(fanAcc);
+            fanAccountIds.Add(fanAcc.Id);
             copyTradingService.Follow(fanId, drakeId);
         }
+
+        var sinkId = Guid.NewGuid();
+        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId);
+        await accountRepo.CreateAsync(sinkAccount);
+        var fundingEntries = new List<JournalEntry>
+        {
+            new(drakeAccount.Id, drakeQuantity * price, EntryType.Debit, SettlementPhase.Clearing)
+        };
+        foreach (var accId in fanAccountIds)
+            fundingEntries.Add(new JournalEntry(accId, followerQuantity * price, EntryType.Debit, SettlementPhase.Clearing));
+        fundingEntries.Add(new JournalEntry(sinkAccount.Id, drakeQuantity * price + followerCount * followerQuantity * price, EntryType.Credit, SettlementPhase.Clearing));
+        await ledgerService.PostTransactionAsync(fundingEntries);
 
         var lpAsk = new Order(Guid.NewGuid(), lpId, outcomeId, OrderType.Ask, price, lpQuantity);
         await marketService.PlaceOrderAsync(lpAsk);

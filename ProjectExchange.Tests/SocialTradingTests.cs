@@ -63,10 +63,21 @@ public class SocialTradingTests
         var drakeAccount = new Account(Guid.NewGuid(), "Drake", AccountType.Asset, drakeId);
         var f1Account = new Account(Guid.NewGuid(), "Follower1", AccountType.Asset, follower1Id);
         var f2Account = new Account(Guid.NewGuid(), "Follower2", AccountType.Asset, follower2Id);
+        var sinkId = Guid.NewGuid();
+        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId);
         await accountRepo.CreateAsync(sellerAccount);
         await accountRepo.CreateAsync(drakeAccount);
         await accountRepo.CreateAsync(f1Account);
         await accountRepo.CreateAsync(f2Account);
+        await accountRepo.CreateAsync(sinkAccount);
+
+        await ledgerService.PostTransactionAsync(new List<JournalEntry>
+        {
+            new(drakeAccount.Id, 25m, EntryType.Debit, SettlementPhase.Clearing),
+            new(f1Account.Id, 5m, EntryType.Debit, SettlementPhase.Clearing),
+            new(f2Account.Id, 5m, EntryType.Debit, SettlementPhase.Clearing),
+            new(sinkAccount.Id, 35m, EntryType.Credit, SettlementPhase.Clearing)
+        });
 
         copyTradingService.Follow(follower1Id, drakeId);
         copyTradingService.Follow(follower2Id, drakeId);
@@ -89,11 +100,11 @@ public class SocialTradingTests
         var f2Balance = await ledgerService.GetAccountBalanceAsync(f2Account.Id, null);
         var sellerBalance = await ledgerService.GetAccountBalanceAsync(sellerAccount.Id, null);
 
-        Assert.Equal(25m, drakeBalance);
-        Assert.Equal(5m, f1Balance);
-        Assert.Equal(5m, f2Balance);
+        Assert.Equal(50m, drakeBalance);
+        Assert.Equal(10m, f1Balance);
+        Assert.Equal(10m, f2Balance);
         Assert.Equal(-35m, sellerBalance);
-        Assert.Equal(0m, drakeBalance + f1Balance + f2Balance + sellerBalance);
+        Assert.Equal(35m, drakeBalance + f1Balance + f2Balance + sellerBalance);
     }
 
     [Fact]
