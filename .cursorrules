@@ -1,0 +1,15 @@
+Project: Project Exchange
+Architecture: Clearing & Settlement Split
+Core Logic:
+- Project Exchange Core: Order-matching and virtual accounting.
+- Accounting Ledger: Double-entry system for operator debts.
+- Settlement Gateway: External payment instructions.
+- Wallet Proxy: B2C third-party wallet integration.
+
+Key Features:
+- "Drake" Module (Copy-trading & Celebrity markets).
+- Agentic AI Auto-Settlement.
+- Outcome-as-an-Asset.
+- Secondary Market for Liquid Contracts.
+
+Technical Stack: .NET, C#, Clean Architecture.

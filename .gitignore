@@ -1,0 +1,104 @@
+# Build results
+[Dd]ebug/
+[Rr]elease/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+out/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]uild/
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.rsuser
+
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# Rider
+.idea/
+*.sln.iml
+
+# User-specific and local
+*.userprefs
+*.pidb
+*.booproj
+*.svclog
+*.scc
+*.cache
+[Dd]esktop.ini
+[Tt]humbs.db
+ehthumbs.db
+
+# Local database files
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.mdf
+*.ldf
+*.ndf
+
+# Docker
+.docker/
+docker-compose.override.yml
+*.env.local
+*.env.*.local
+
+# NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Test / coverage
+[Tt]est[Rr]esult*/
+[Cc]overage/
+*.trx
+*.coverage
+*.coveragexml
+.coverage
+
+# ASP.NET
+*.log
+*.dll.config
+*.publish.xml
+*.pubxml
+*.publishproj
+PublishProfiles/
+
+# Windows
+[Tt]humbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Misc
+*.bak
+*.swp
+*~
+.env
+.env.local
+*.local

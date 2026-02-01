@@ -1,0 +1,40 @@
+namespace ProjectExchange.Core.Markets;
+
+/// <summary>
+/// An order in the matching engine: Bid or Ask at a price (0.00–1.00) for an outcome.
+/// </summary>
+public class Order
+{
+    public Guid Id { get; }
+    public Guid UserId { get; }
+    public string OutcomeId { get; }
+    public OrderType Type { get; }
+    public decimal Price { get; }
+    /// <summary>Remaining quantity (decremented when matched).</summary>
+    public decimal Quantity { get; private set; }
+
+    public Order(Guid id, Guid userId, string outcomeId, OrderType type, decimal price, decimal quantity)
+    {
+        if (string.IsNullOrWhiteSpace(outcomeId))
+            throw new ArgumentException("OutcomeId is required.", nameof(outcomeId));
+        if (price < 0.00m || price > 1.00m)
+            throw new ArgumentOutOfRangeException(nameof(price), "Price must be between 0.00 and 1.00.");
+        if (quantity <= 0)
+            throw new ArgumentOutOfRangeException(nameof(quantity), "Quantity must be positive.");
+
+        Id = id;
+        UserId = userId;
+        OutcomeId = outcomeId.Trim();
+        Type = type;
+        Price = price;
+        Quantity = quantity;
+    }
+
+    /// <summary>Reduces remaining quantity by the given amount (used when matched).</summary>
+    internal void ReduceBy(decimal amount)
+    {
+        if (amount <= 0 || amount > Quantity)
+            throw new ArgumentOutOfRangeException(nameof(amount));
+        Quantity -= amount;
+    }
+}
