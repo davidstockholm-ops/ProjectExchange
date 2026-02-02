@@ -2,7 +2,7 @@ using ProjectExchange.Accounting.Domain.Abstractions;
 using ProjectExchange.Accounting.Domain.Entities;
 using ProjectExchange.Accounting.Domain.Enums;
 using ProjectExchange.Accounting.Domain.Services;
-using ProjectExchange.Core.Drake;
+using ProjectExchange.Core.Celebrity;
 using ProjectExchange.Core.Markets;
 
 namespace ProjectExchange.Tests;

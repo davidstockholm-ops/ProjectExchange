@@ -8,6 +8,6 @@ public enum TransactionType
     /// <summary>Order-book match between buyer and seller.</summary>
     Trade,
 
-    /// <summary>Other/legacy (e.g. Drake clearing, settlement).</summary>
+    /// <summary>Other/legacy (e.g. celebrity clearing, settlement).</summary>
     Other
 }

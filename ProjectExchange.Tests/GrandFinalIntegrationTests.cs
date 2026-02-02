@@ -2,7 +2,7 @@ using ProjectExchange.Accounting.Domain.Abstractions;
 using ProjectExchange.Accounting.Domain.Entities;
 using ProjectExchange.Accounting.Domain.Enums;
 using ProjectExchange.Accounting.Domain.Services;
-using ProjectExchange.Core.Drake;
+using ProjectExchange.Core.Celebrity;
 using ProjectExchange.Core.Markets;
 using ProjectExchange.Core.Social;
 
@@ -10,7 +10,7 @@ namespace ProjectExchange.Tests;
 
 /// <summary>
 /// Ultimate system test: Path A (Matching), Path B (Event/Oracle), and Path C (Copy-Trading) as one organism.
-/// Uses EF Core InMemory and enterprise repositories.
+/// Tests the Celebrity flow with dynamic actorId. Uses EF Core InMemory and enterprise repositories.
 /// </summary>
 public class GrandFinalIntegrationTests
 {
@@ -23,11 +23,12 @@ public class GrandFinalIntegrationTests
         EnterpriseTestSetup.CreateFullStack();
 
     [Fact]
-    public async Task Drake_Social_Liquidity_Cycle_Should_Work()
+    public async Task Celebrity_Social_Liquidity_Cycle_Should_Work()
     {
         var (accountRepo, ledgerService, copyTradingService, marketService, oracle) = CreateFullStack();
 
-        var drakeId = Guid.NewGuid();
+        const string actorId = "Drake";
+        var celebrityId = Guid.NewGuid();
         var liquidityProviderId = Guid.NewGuid();
         var fan1Id = Guid.NewGuid();
         var fan2Id = Guid.NewGuid();
@@ -35,7 +36,7 @@ public class GrandFinalIntegrationTests
         var fan4Id = Guid.NewGuid();
         var fan5Id = Guid.NewGuid();
 
-        var drakeAccount = new Account(Guid.NewGuid(), "Drake", AccountType.Asset, drakeId);
+        var celebrityAccount = new Account(Guid.NewGuid(), actorId, AccountType.Asset, celebrityId);
         var lpAccount = new Account(Guid.NewGuid(), "Liquidity Provider", AccountType.Asset, liquidityProviderId);
         var fan1Account = new Account(Guid.NewGuid(), "Fan1", AccountType.Asset, fan1Id);
         var fan2Account = new Account(Guid.NewGuid(), "Fan2", AccountType.Asset, fan2Id);
@@ -45,7 +46,7 @@ public class GrandFinalIntegrationTests
 
         var sinkId = Guid.NewGuid();
         var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId);
-        await accountRepo.CreateAsync(drakeAccount);
+        await accountRepo.CreateAsync(celebrityAccount);
         await accountRepo.CreateAsync(lpAccount);
         await accountRepo.CreateAsync(fan1Account);
         await accountRepo.CreateAsync(fan2Account);
@@ -56,7 +57,7 @@ public class GrandFinalIntegrationTests
 
         await ledgerService.PostTransactionAsync(new List<JournalEntry>
         {
-            new(drakeAccount.Id, 25m, EntryType.Debit, SettlementPhase.Clearing),
+            new(celebrityAccount.Id, 25m, EntryType.Debit, SettlementPhase.Clearing),
             new(fan1Account.Id, 5m, EntryType.Debit, SettlementPhase.Clearing),
             new(fan2Account.Id, 5m, EntryType.Debit, SettlementPhase.Clearing),
             new(fan3Account.Id, 5m, EntryType.Debit, SettlementPhase.Clearing),
@@ -65,27 +66,28 @@ public class GrandFinalIntegrationTests
             new(sinkAccount.Id, 50m, EntryType.Credit, SettlementPhase.Clearing)
         });
 
-        copyTradingService.Follow(fan1Id, drakeId);
-        copyTradingService.Follow(fan2Id, drakeId);
-        copyTradingService.Follow(fan3Id, drakeId);
-        copyTradingService.Follow(fan4Id, drakeId);
-        copyTradingService.Follow(fan5Id, drakeId);
+        copyTradingService.Follow(fan1Id, celebrityId);
+        copyTradingService.Follow(fan2Id, celebrityId);
+        copyTradingService.Follow(fan3Id, celebrityId);
+        copyTradingService.Follow(fan4Id, celebrityId);
+        copyTradingService.Follow(fan5Id, celebrityId);
 
-        var evt = oracle.CreateMarketEvent("Drake", "Grand Final", "Flash", 5);
+        var evt = oracle.CreateMarketEvent(actorId, "Grand Final", "Flash", 5);
         var outcomeId = evt.OutcomeId;
         Assert.NotNull(outcomeId);
         Assert.True(evt.IsActive);
+        Assert.Equal(actorId, evt.ActorId);
 
         var lpAsk = new Order(Guid.NewGuid(), liquidityProviderId, outcomeId, OrderType.Ask, 0.50m, 150m);
         await marketService.PlaceOrderAsync(lpAsk);
 
-        var drakeBid = new Order(Guid.NewGuid(), drakeId, outcomeId, OrderType.Bid, 0.50m, 50m);
-        var result = await marketService.PlaceOrderAsync(drakeBid);
+        var celebrityBid = new Order(Guid.NewGuid(), celebrityId, outcomeId, OrderType.Bid, 0.50m, 50m);
+        var result = await marketService.PlaceOrderAsync(celebrityBid);
 
-        Assert.True(result.MatchCount >= 1, "Drake's order should have matched.");
-        Assert.True(result.TradeTransactionIds.Count >= 6, "Six trades expected: 1 Drake + 5 Fans.");
+        Assert.True(result.MatchCount >= 1, $"{actorId}'s order should have matched.");
+        Assert.True(result.TradeTransactionIds.Count >= 6, $"Six trades expected: 1 {actorId} + 5 Fans.");
 
-        var drakeBalance = await ledgerService.GetAccountBalanceAsync(drakeAccount.Id, null);
+        var celebrityBalance = await ledgerService.GetAccountBalanceAsync(celebrityAccount.Id, null);
         var fan1Balance = await ledgerService.GetAccountBalanceAsync(fan1Account.Id, null);
         var fan2Balance = await ledgerService.GetAccountBalanceAsync(fan2Account.Id, null);
         var fan3Balance = await ledgerService.GetAccountBalanceAsync(fan3Account.Id, null);
@@ -93,7 +95,7 @@ public class GrandFinalIntegrationTests
         var fan5Balance = await ledgerService.GetAccountBalanceAsync(fan5Account.Id, null);
         var lpBalance = await ledgerService.GetAccountBalanceAsync(lpAccount.Id, null);
 
-        Assert.Equal(50m, drakeBalance);
+        Assert.Equal(50m, celebrityBalance);
         Assert.Equal(10m, fan1Balance);
         Assert.Equal(10m, fan2Balance);
         Assert.Equal(10m, fan3Balance);

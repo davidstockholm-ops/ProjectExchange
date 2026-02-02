@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using ProjectExchange.Core.Markets;
 
-namespace ProjectExchange.Core.Drake;
+namespace ProjectExchange.Core.Celebrity;
 
 /// <summary>
 /// Outcome oracle that handles multiple celebrities (actors) by ID. Simulates celebrity trade events

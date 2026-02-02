@@ -142,19 +142,19 @@ public class DatabaseIntegrityTests
             });
         }
 
-        var sync = new object();
         var successCount = 0;
-        Parallel.For(0, 5, _ =>
+        var semaphore = new SemaphoreSlim(1, 1);
+        var tasks = Enumerable.Range(0, 5).Select(async _ =>
         {
-            using var scope = provider.CreateScope();
-            var ledgerService = scope.ServiceProvider.GetRequiredService<LedgerService>();
-            var txRepo = scope.ServiceProvider.GetRequiredService<ITransactionRepository>();
-            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-            var db = scope.ServiceProvider.GetRequiredService<ProjectExchangeDbContext>();
-
-            lock (sync)
+            await semaphore.WaitAsync();
+            try
             {
-                var balance = ledgerService.GetAccountBalanceAsync(walletId, default).GetAwaiter().GetResult();
+                using var scope = provider.CreateScope();
+                var ledgerService = scope.ServiceProvider.GetRequiredService<LedgerService>();
+                var txRepo = scope.ServiceProvider.GetRequiredService<ITransactionRepository>();
+                var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+                var balance = await ledgerService.GetAccountBalanceAsync(walletId, default);
                 if (balance < 20m)
                     return;
                 var tx = new Transaction(
@@ -164,11 +164,16 @@ public class DatabaseIntegrityTests
                         new(walletId, 20m, EntryType.Credit, SettlementPhase.Clearing),
                         new(sinkId, 20m, EntryType.Debit, SettlementPhase.Clearing)
                     });
-                txRepo.AppendAsync(tx, default).GetAwaiter().GetResult();
-                unitOfWork.SaveChangesAsync(default).GetAwaiter().GetResult();
+                await txRepo.AppendAsync(tx, default);
+                await unitOfWork.SaveChangesAsync(default);
                 Interlocked.Increment(ref successCount);
             }
+            finally
+            {
+                semaphore.Release();
+            }
         });
+        await Task.WhenAll(tasks);
 
         using (var scope = provider.CreateScope())
         {
@@ -184,7 +189,8 @@ public class DatabaseIntegrityTests
     {
         var (accountRepo, ledgerService, copyTradingService, marketService, oracle, dbContext) = EnterpriseTestSetup.CreateFullStackWithContext();
 
-        var drakeId = Guid.NewGuid();
+        const string actorId = "Drake";
+        var celebrityId = Guid.NewGuid();
         var liquidityProviderId = Guid.NewGuid();
         var fan1Id = Guid.NewGuid();
         var fan2Id = Guid.NewGuid();
@@ -192,7 +198,7 @@ public class DatabaseIntegrityTests
         var fan4Id = Guid.NewGuid();
         var fan5Id = Guid.NewGuid();
 
-        var drakeAccount = new Account(Guid.NewGuid(), "Drake", AccountType.Asset, drakeId);
+        var celebrityAccount = new Account(Guid.NewGuid(), actorId, AccountType.Asset, celebrityId);
         var lpAccount = new Account(Guid.NewGuid(), "LP", AccountType.Asset, liquidityProviderId);
         var fan1Account = new Account(Guid.NewGuid(), "Fan1", AccountType.Asset, fan1Id);
         var fan2Account = new Account(Guid.NewGuid(), "Fan2", AccountType.Asset, fan2Id);
@@ -200,7 +206,7 @@ public class DatabaseIntegrityTests
         var fan4Account = new Account(Guid.NewGuid(), "Fan4", AccountType.Asset, fan4Id);
         var fan5Account = new Account(Guid.NewGuid(), "Fan5", AccountType.Asset, fan5Id);
 
-        await accountRepo.CreateAsync(drakeAccount);
+        await accountRepo.CreateAsync(celebrityAccount);
         await accountRepo.CreateAsync(lpAccount);
         await accountRepo.CreateAsync(fan1Account);
         await accountRepo.CreateAsync(fan2Account);
@@ -213,7 +219,7 @@ public class DatabaseIntegrityTests
         await accountRepo.CreateAsync(sinkAccount);
         await ledgerService.PostTransactionAsync(new List<JournalEntry>
         {
-            new(drakeAccount.Id, 25m, EntryType.Debit, SettlementPhase.Clearing),
+            new(celebrityAccount.Id, 25m, EntryType.Debit, SettlementPhase.Clearing),
             new(fan1Account.Id, 5m, EntryType.Debit, SettlementPhase.Clearing),
             new(fan2Account.Id, 5m, EntryType.Debit, SettlementPhase.Clearing),
             new(fan3Account.Id, 5m, EntryType.Debit, SettlementPhase.Clearing),
@@ -222,20 +228,20 @@ public class DatabaseIntegrityTests
             new(sinkAccount.Id, 50m, EntryType.Credit, SettlementPhase.Clearing)
         });
 
-        copyTradingService.Follow(fan1Id, drakeId);
-        copyTradingService.Follow(fan2Id, drakeId);
-        copyTradingService.Follow(fan3Id, drakeId);
-        copyTradingService.Follow(fan4Id, drakeId);
-        copyTradingService.Follow(fan5Id, drakeId);
+        copyTradingService.Follow(fan1Id, celebrityId);
+        copyTradingService.Follow(fan2Id, celebrityId);
+        copyTradingService.Follow(fan3Id, celebrityId);
+        copyTradingService.Follow(fan4Id, celebrityId);
+        copyTradingService.Follow(fan5Id, celebrityId);
 
-        var evt = oracle.CreateMarketEvent("Drake", "Integrity Grand Final", "Flash", 5);
+        var evt = oracle.CreateMarketEvent(actorId, "Integrity Grand Final", "Flash", 5);
         var outcomeId = evt.OutcomeId;
 
         var lpAsk = new Order(Guid.NewGuid(), liquidityProviderId, outcomeId, OrderType.Ask, 0.50m, 150m);
         await marketService.PlaceOrderAsync(lpAsk);
 
-        var drakeBid = new Order(Guid.NewGuid(), drakeId, outcomeId, OrderType.Bid, 0.50m, 50m);
-        await marketService.PlaceOrderAsync(drakeBid);
+        var celebrityBid = new Order(Guid.NewGuid(), celebrityId, outcomeId, OrderType.Bid, 0.50m, 50m);
+        await marketService.PlaceOrderAsync(celebrityBid);
 
         var entries = await dbContext.JournalEntries.AsNoTracking().ToListAsync();
         var signedSum = entries.Sum(je =>

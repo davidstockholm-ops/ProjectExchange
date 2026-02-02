@@ -5,10 +5,10 @@ using ProjectExchange.Accounting.Domain.Entities;
 using ProjectExchange.Accounting.Domain.Enums;
 using ProjectExchange.Accounting.Domain.Services;
 
-namespace ProjectExchange.Core.Drake;
+namespace ProjectExchange.Core.Celebrity;
 
 /// <summary>
-/// Auto-Settlement Agent: handles the outcome of Drake trades. When an outcome is reached,
+/// Auto-Settlement Agent: handles the outcome of celebrity trades. When an outcome is reached,
 /// automatically settles the related clearing transaction(s) by posting Settlement-phase
 /// transactions (reverse entries) that reference each clearing tx. Idempotent: already-settled
 /// clearing transactions are skipped.

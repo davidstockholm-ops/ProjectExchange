@@ -1,6 +1,6 @@
 # Project Exchange — Developer Guide
 
-This document describes the architecture, core modules, and development practices for **Project Exchange**: a clearing and settlement platform with double-entry accounting, order matching, and celebrity-driven (Drake) markets.
+This document describes the architecture, core modules, and development practices for **Project Exchange**: a clearing and settlement platform with double-entry accounting, order matching, and celebrity-driven markets.
 
 ---
 
@@ -49,7 +49,7 @@ Persistence uses EF Core with PostgreSQL in production and SQLite in-memory for 
 
 ---
 
-## The Drake Integration
+## The Celebrity Integration
 
 ### Outcome-as-an-Asset
 
@@ -87,7 +87,7 @@ The project maintains a **45-test** suite (unit, integration, stress, and securi
 ### Test Categories
 
 - **Unit**: `OrderBookTests`, `OrderTests`, `LedgerTests`, `CopyTradingServiceTests` — domain and services in isolation.
-- **Integration**: `MarketIntegrationTests`, `SocialTradingTests`, `DrakeFlowTests`, `GrandFinalIntegrationTests` — full stacks (MarketService, LedgerService, CopyTrading, Oracle) with shared in-memory DB.
+- **Integration**: `MarketIntegrationTests`, `SocialTradingTests`, `CelebrityFlowTests`, `GrandFinalIntegrationTests` — full stacks (MarketService, LedgerService, CopyTrading, Oracle) with shared in-memory DB.
 - **Database / Integrity**: `DatabaseIntegrityTests` — rollback on failure (ThrowingTransactionRepository), order mapping fidelity, concurrent withdrawals, and double-entry zero-sum.
 - **Performance / Stress**: `PerformanceStressTests` — high-volume match-making (1 000 buy + 1 000 sell orders via `Task.WhenAll`) and concurrent copy-trading (500 followers bombarding the ledger); both assert zero-sum afterward.
 - **Security / Negative**: `SecurityIntegrityTests` — insufficient funds rejection, invalid outcome rejection (`DomainException`), and negative price rejection (Order constructor); no ledger pollution.

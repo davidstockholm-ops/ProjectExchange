@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using ProjectExchange.Accounting.Domain.Abstractions;
 using ProjectExchange.Accounting.Domain.Services;
-using ProjectExchange.Core.Drake;
+using ProjectExchange.Core.Celebrity;
 using ProjectExchange.Core.Infrastructure.Persistence;
 using ProjectExchange.Core.Markets;
 using ProjectExchange.Core.Social;
@@ -127,14 +127,14 @@ public static class EnterpriseTestSetup
     }
 
     /// <summary>
-    /// Drake/Celebrity stack: AccountRepo, LedgerService, Oracle, CopyTradingEngine, AutoSettlementAgent using EF and a fresh SQLite in-memory DB.
+    /// Celebrity stack: AccountRepo, LedgerService, Oracle, CopyTradingEngine, AutoSettlementAgent using EF and a fresh SQLite in-memory DB.
     /// </summary>
     public static (
         IAccountRepository AccountRepo,
         LedgerService LedgerService,
         CelebrityOracleService Oracle,
         CopyTradingEngine CopyTradingEngine,
-        AutoSettlementAgent AutoSettlementAgent) CreateDrakeStack()
+        AutoSettlementAgent AutoSettlementAgent) CreateCelebrityStack()
     {
         var context = CreateFreshDbContext();
         var provider = CreateServiceProvider(context);

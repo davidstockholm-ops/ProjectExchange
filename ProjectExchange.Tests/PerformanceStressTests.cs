@@ -5,7 +5,7 @@ using ProjectExchange.Accounting.Domain.Abstractions;
 using ProjectExchange.Accounting.Domain.Entities;
 using ProjectExchange.Accounting.Domain.Enums;
 using ProjectExchange.Accounting.Domain.Services;
-using ProjectExchange.Core.Drake;
+using ProjectExchange.Core.Celebrity;
 using ProjectExchange.Core.Infrastructure.Persistence;
 using ProjectExchange.Core.Markets;
 using ProjectExchange.Core.Social;
@@ -79,7 +79,7 @@ public class PerformanceStressTests
     }
 
     /// <summary>
-    /// Simulates Drake making a trade; 500 followers copy the trade simultaneously via Task.WhenAll.
+    /// Simulates a celebrity making a trade; 500 followers copy the trade simultaneously via Task.WhenAll.
     /// Verifies LedgerService handles all 500+ journal entries without deadlocks and zero-sum holds.
     /// </summary>
     [Fact]
@@ -89,16 +89,16 @@ public class PerformanceStressTests
         const string outcomeId = "stress-outcome-copytrading";
         const decimal price = 0.50m;
         const decimal lpQuantity = 5000m + 50m;
-        const decimal drakeQuantity = 50m;
+        const decimal celebrityQuantity = 50m;
         const decimal followerQuantity = 10m;
 
         var (accountRepo, ledgerService, copyTradingService, marketService, oracle, dbContext) = EnterpriseTestSetup.CreateFullStackWithContext();
 
-        var drakeId = Guid.NewGuid();
+        var celebrityId = Guid.NewGuid();
         var lpId = Guid.NewGuid();
-        var drakeAccount = new Account(Guid.NewGuid(), "Drake", AccountType.Asset, drakeId);
+        var celebrityAccount = new Account(Guid.NewGuid(), "Drake", AccountType.Asset, celebrityId);
         var lpAccount = new Account(Guid.NewGuid(), "LP", AccountType.Asset, lpId);
-        await accountRepo.CreateAsync(drakeAccount);
+        await accountRepo.CreateAsync(celebrityAccount);
         await accountRepo.CreateAsync(lpAccount);
 
         var fanIds = new List<Guid>();
@@ -110,7 +110,7 @@ public class PerformanceStressTests
             var fanAcc = new Account(Guid.NewGuid(), $"Fan{i}", AccountType.Asset, fanId);
             await accountRepo.CreateAsync(fanAcc);
             fanAccountIds.Add(fanAcc.Id);
-            copyTradingService.Follow(fanId, drakeId);
+            copyTradingService.Follow(fanId, celebrityId);
         }
 
         var sinkId = Guid.NewGuid();
@@ -118,18 +118,18 @@ public class PerformanceStressTests
         await accountRepo.CreateAsync(sinkAccount);
         var fundingEntries = new List<JournalEntry>
         {
-            new(drakeAccount.Id, drakeQuantity * price, EntryType.Debit, SettlementPhase.Clearing)
+            new(celebrityAccount.Id, celebrityQuantity * price, EntryType.Debit, SettlementPhase.Clearing)
         };
         foreach (var accId in fanAccountIds)
             fundingEntries.Add(new JournalEntry(accId, followerQuantity * price, EntryType.Debit, SettlementPhase.Clearing));
-        fundingEntries.Add(new JournalEntry(sinkAccount.Id, drakeQuantity * price + followerCount * followerQuantity * price, EntryType.Credit, SettlementPhase.Clearing));
+        fundingEntries.Add(new JournalEntry(sinkAccount.Id, celebrityQuantity * price + followerCount * followerQuantity * price, EntryType.Credit, SettlementPhase.Clearing));
         await ledgerService.PostTransactionAsync(fundingEntries);
 
         var lpAsk = new Order(Guid.NewGuid(), lpId, outcomeId, OrderType.Ask, price, lpQuantity);
         await marketService.PlaceOrderAsync(lpAsk);
 
-        var drakeBid = new Order(Guid.NewGuid(), drakeId, outcomeId, OrderType.Bid, price, drakeQuantity);
-        await marketService.PlaceOrderAsync(drakeBid);
+        var celebrityBid = new Order(Guid.NewGuid(), celebrityId, outcomeId, OrderType.Bid, price, celebrityQuantity);
+        await marketService.PlaceOrderAsync(celebrityBid);
 
         var followerOrders = fanIds.Select(fanId => new Order(Guid.NewGuid(), fanId, outcomeId, OrderType.Bid, price, followerQuantity)).ToList();
         var bombardTasks = followerOrders.Select(o => marketService.PlaceOrderAsync(o)).ToList();

@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using ProjectExchange.Accounting.Domain.Abstractions;
 using ProjectExchange.Accounting.Domain.Services;
-using ProjectExchange.Core.Drake;
+using ProjectExchange.Core.Celebrity;
 using ProjectExchange.Core.Infrastructure.Persistence;
 using ProjectExchange.Core.Markets;
 using ProjectExchange.Core.Social;
@@ -44,7 +44,7 @@ builder.Services.AddScoped<MarketService>();
 // Social copy-trading: follow graph (singleton)
 builder.Services.AddSingleton<CopyTradingService>();
 
-// Drake/Celebrity module: outcome oracle (multi-actor), copy-trading, auto-settlement. Singletons so in-memory state is shared.
+// Celebrity module: outcome oracle (multi-actor), copy-trading, auto-settlement. Singletons so in-memory state is shared.
 builder.Services.AddSingleton<IOutcomeOracle, CelebrityOracleService>();
 builder.Services.AddSingleton<CopyTradingEngine>();
 builder.Services.AddSingleton<AutoSettlementAgent>();

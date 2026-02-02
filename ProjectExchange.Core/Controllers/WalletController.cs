@@ -20,18 +20,16 @@ public class WalletController : ControllerBase
     }
 
     /// <summary>
-    /// Creates a new account for an operator or user [2026-01-31].
+    /// Creates a new account for an operator or user. Name is optional (defaults to "Wallet").
     /// </summary>
     [HttpPost("create")]
     public async Task<ActionResult<CreateWalletResponse>> CreateWallet(
         [FromBody] CreateWalletRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(request.Name))
-            return BadRequest("Name is required.");
-
+        var name = string.IsNullOrWhiteSpace(request.Name) ? "Wallet" : request.Name.Trim();
         var id = request.Id ?? Guid.NewGuid();
-        var account = new Account(id, request.Name.Trim(), AccountType.Asset, request.OperatorId);
+        var account = new Account(id, name, AccountType.Asset, request.OperatorId);
         await _accountRepository.CreateAsync(account, cancellationToken);
 
         return CreatedAtAction(
@@ -61,6 +59,7 @@ public class WalletController : ControllerBase
     }
 }
 
-public record CreateWalletRequest(Guid OperatorId, string Name, Guid? Id = null);
+/// <summary>Request to create a wallet. Name is optional (defaults to "Wallet").</summary>
+public record CreateWalletRequest(Guid OperatorId, string? Name = null, Guid? Id = null);
 public record CreateWalletResponse(Guid Id, string Name, Guid OperatorId);
 public record GetBalanceResponse(Guid AccountId, decimal Balance, string Phase);

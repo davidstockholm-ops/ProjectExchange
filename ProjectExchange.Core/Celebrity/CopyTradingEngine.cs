@@ -6,7 +6,7 @@ using ProjectExchange.Accounting.Domain.Enums;
 using ProjectExchange.Accounting.Domain.Services;
 using ProjectExchange.Core.Markets;
 
-namespace ProjectExchange.Core.Drake;
+namespace ProjectExchange.Core.Celebrity;
 
 /// <summary>
 /// Subscribes to IOutcomeOracle (e.g. CelebrityOracleService) and uses LedgerService to execute copy-trades:
@@ -66,7 +66,7 @@ public class CopyTradingEngine
     /// </summary>
     public async Task<Guid> ExecuteCopyTradeAsync(CelebrityTradeSignal signal, CancellationToken cancellationToken = default)
     {
-        var mainAccountName = DrakeConstants.GetMainOperatingAccountName(signal.ActorId);
+        var mainAccountName = CelebrityConstants.GetMainOperatingAccountName(signal.ActorId);
         Console.WriteLine($"[CopyTradingEngine] ExecuteCopyTradeAsync: OperatorId={signal.OperatorId}, ActorId={signal.ActorId}, OutcomeId={signal.OutcomeId}, Amount={signal.Amount}");
 
         await using var scope = _scopeFactory.CreateAsyncScope();
@@ -135,8 +135,8 @@ public class CopyTradingEngine
             }
 
             var id = Guid.NewGuid();
-            var name = $"{DrakeConstants.MarketHoldingAccountNamePrefix}{outcomeName?.Trim() ?? outcomeId}";
-            var account = new Account(id, name, AccountType.Liability, DrakeConstants.SystemOperatorId);
+            var name = $"{CelebrityConstants.MarketHoldingAccountNamePrefix}{outcomeName?.Trim() ?? outcomeId}";
+            var account = new Account(id, name, AccountType.Liability, CelebrityConstants.SystemOperatorId);
             await accountRepository.CreateAsync(account, cancellationToken);
             _outcomeToMarketHoldingAccountId.TryAdd(outcomeId, id);
             return account;

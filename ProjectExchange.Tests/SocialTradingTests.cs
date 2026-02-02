@@ -25,23 +25,23 @@ public class SocialTradingTests
     {
         var (accountRepo, _, copyTradingService, marketService) = CreateSocialStack();
 
-        var drakeId = Guid.NewGuid();
+        var celebrityId = Guid.NewGuid();
         var follower1Id = Guid.NewGuid();
         var follower2Id = Guid.NewGuid();
 
-        var drakeAccount = new Account(Guid.NewGuid(), "Drake", AccountType.Asset, drakeId);
+        var celebrityAccount = new Account(Guid.NewGuid(), "Drake", AccountType.Asset, celebrityId);
         var f1Account = new Account(Guid.NewGuid(), "Follower1", AccountType.Asset, follower1Id);
         var f2Account = new Account(Guid.NewGuid(), "Follower2", AccountType.Asset, follower2Id);
-        await accountRepo.CreateAsync(drakeAccount);
+        await accountRepo.CreateAsync(celebrityAccount);
         await accountRepo.CreateAsync(f1Account);
         await accountRepo.CreateAsync(f2Account);
 
-        copyTradingService.Follow(follower1Id, drakeId);
-        copyTradingService.Follow(follower2Id, drakeId);
+        copyTradingService.Follow(follower1Id, celebrityId);
+        copyTradingService.Follow(follower2Id, celebrityId);
 
         const string outcomeId = "outcome-social";
-        var drakeOrder = new Order(Guid.NewGuid(), drakeId, outcomeId, OrderType.Bid, 0.60m, 50m);
-        await marketService.PlaceOrderAsync(drakeOrder);
+        var celebrityOrder = new Order(Guid.NewGuid(), celebrityId, outcomeId, OrderType.Bid, 0.60m, 50m);
+        await marketService.PlaceOrderAsync(celebrityOrder);
 
         var book = marketService.GetOrderBook(outcomeId);
         Assert.NotNull(book);
@@ -55,32 +55,32 @@ public class SocialTradingTests
         var (accountRepo, ledgerService, copyTradingService, marketService) = CreateSocialStack();
 
         var sellerId = Guid.NewGuid();
-        var drakeId = Guid.NewGuid();
+        var celebrityId = Guid.NewGuid();
         var follower1Id = Guid.NewGuid();
         var follower2Id = Guid.NewGuid();
 
         var sellerAccount = new Account(Guid.NewGuid(), "Seller", AccountType.Asset, sellerId);
-        var drakeAccount = new Account(Guid.NewGuid(), "Drake", AccountType.Asset, drakeId);
+        var celebrityAccount = new Account(Guid.NewGuid(), "Drake", AccountType.Asset, celebrityId);
         var f1Account = new Account(Guid.NewGuid(), "Follower1", AccountType.Asset, follower1Id);
         var f2Account = new Account(Guid.NewGuid(), "Follower2", AccountType.Asset, follower2Id);
         var sinkId = Guid.NewGuid();
         var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId);
         await accountRepo.CreateAsync(sellerAccount);
-        await accountRepo.CreateAsync(drakeAccount);
+        await accountRepo.CreateAsync(celebrityAccount);
         await accountRepo.CreateAsync(f1Account);
         await accountRepo.CreateAsync(f2Account);
         await accountRepo.CreateAsync(sinkAccount);
 
         await ledgerService.PostTransactionAsync(new List<JournalEntry>
         {
-            new(drakeAccount.Id, 25m, EntryType.Debit, SettlementPhase.Clearing),
+            new(celebrityAccount.Id, 25m, EntryType.Debit, SettlementPhase.Clearing),
             new(f1Account.Id, 5m, EntryType.Debit, SettlementPhase.Clearing),
             new(f2Account.Id, 5m, EntryType.Debit, SettlementPhase.Clearing),
             new(sinkAccount.Id, 35m, EntryType.Credit, SettlementPhase.Clearing)
         });
 
-        copyTradingService.Follow(follower1Id, drakeId);
-        copyTradingService.Follow(follower2Id, drakeId);
+        copyTradingService.Follow(follower1Id, celebrityId);
+        copyTradingService.Follow(follower2Id, celebrityId);
 
         const string outcomeId = "outcome-mirror-match";
         const decimal askPrice = 0.50m;
@@ -89,22 +89,22 @@ public class SocialTradingTests
         var sellerAsk = new Order(Guid.NewGuid(), sellerId, outcomeId, OrderType.Ask, askPrice, 100m);
         await marketService.PlaceOrderAsync(sellerAsk);
 
-        var drakeBid = new Order(Guid.NewGuid(), drakeId, outcomeId, OrderType.Bid, bidPrice, 50m);
-        var result = await marketService.PlaceOrderAsync(drakeBid);
+        var celebrityBid = new Order(Guid.NewGuid(), celebrityId, outcomeId, OrderType.Bid, bidPrice, 50m);
+        var result = await marketService.PlaceOrderAsync(celebrityBid);
 
         Assert.True(result.MatchCount >= 1);
         Assert.True(result.TradeTransactionIds.Count >= 3);
 
-        var drakeBalance = await ledgerService.GetAccountBalanceAsync(drakeAccount.Id, null);
+        var celebrityBalance = await ledgerService.GetAccountBalanceAsync(celebrityAccount.Id, null);
         var f1Balance = await ledgerService.GetAccountBalanceAsync(f1Account.Id, null);
         var f2Balance = await ledgerService.GetAccountBalanceAsync(f2Account.Id, null);
         var sellerBalance = await ledgerService.GetAccountBalanceAsync(sellerAccount.Id, null);
 
-        Assert.Equal(50m, drakeBalance);
+        Assert.Equal(50m, celebrityBalance);
         Assert.Equal(10m, f1Balance);
         Assert.Equal(10m, f2Balance);
         Assert.Equal(-35m, sellerBalance);
-        Assert.Equal(35m, drakeBalance + f1Balance + f2Balance + sellerBalance);
+        Assert.Equal(35m, celebrityBalance + f1Balance + f2Balance + sellerBalance);
     }
 
     [Fact]
