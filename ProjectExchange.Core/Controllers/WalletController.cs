@@ -6,6 +6,7 @@ using ProjectExchange.Accounting.Domain.Services;
 
 namespace ProjectExchange.Core.Controllers;
 
+/// <summary>Wallet: create operator/user accounts.</summary>
 [ApiController]
 [Route("api/[controller]")]
 public class WalletController : ControllerBase

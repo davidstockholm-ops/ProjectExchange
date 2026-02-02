@@ -147,6 +147,48 @@ dotnet run --project ProjectExchange.Core
 
 Use the connection string in `appsettings.json` or override with environment variables.
 
+### Verify everything is running
+
+1. **Start PostgreSQL** (if running the API locally):
+   ```bash
+   docker-compose up -d postgres
+   ```
+
+2. **Start the API**:
+   ```bash
+   dotnet run --project ProjectExchange.Core
+   ```
+   Default URL: **http://localhost:5050** (see `Properties/launchSettings.json`).
+
+3. **Health check** (quick “is it up?”):
+   ```bash
+   curl http://localhost:5050/health
+   ```
+   Expect: `{"status":"ok","service":"ProjectExchange"}`.
+
+4. **Swagger UI** (manual API testing):
+   - Open **http://localhost:5050/swagger**
+   - Try in order:
+     - **POST /api/markets/flash/create** — body: `{"title":"Test Flash","durationMinutes":5}` → returns event with `outcomeId`
+     - **GET /api/markets/active** → list includes the new Flash event
+     - **GET /api/markets/orderbook/{outcomeId}** — use the `outcomeId` from step 1 → empty bids/asks
+     - **POST /api/markets/base/create** — body: `{"title":"Test Base","durationMinutes":60}`
+     - **POST /api/markets/outcome-reached** — body: `{"outcomeId":"<any outcomeId>"}` (optional: `confidenceScore`, `sourceVerificationList`)
+
+5. **Run the test suite** (no PostgreSQL needed; uses SQLite in-memory):
+   ```bash
+   dotnet test
+   ```
+   All tests should pass. This confirms DI, oracles, ledger, and market flows.
+
+6. **General / smoke test** (API must be running on http://localhost:5050):
+   ```bash
+   ./scripts/smoke-test.sh
+   # Or with a different base URL:
+   ./scripts/smoke-test.sh http://localhost:5051
+   ```
+   The script calls: `/health`, `POST /api/markets/flash/create`, `GET /api/markets/active`, `GET /api/markets/orderbook/{outcomeId}`, `POST /api/markets/outcome-reached`. It prints PASS or FAIL.
+
 ---
 
 ## Summary

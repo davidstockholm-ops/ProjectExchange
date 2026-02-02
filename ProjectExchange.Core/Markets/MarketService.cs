@@ -10,10 +10,11 @@ using ProjectExchange.Core.Social;
 namespace ProjectExchange.Core.Markets;
 
 /// <summary>
-/// Places orders, runs matching, and records each match in the ledger as a Trade.
-/// Uses <see cref="IDbContextTransaction"/> so ledger updates and order-book updates succeed or fail together (atomicity).
-/// Rejects orders for unregistered outcomes (if IOutcomeRegistry provided) and insufficient buyer funds.
-/// After a successful placement, if the user is a Master (has followers), mirrors the order for each follower via CopyTradingService.
+/// Secondary market (liquid contracts): places orders, runs matching, and records each match in the ledger as a Trade.
+/// Assets are identified by OutcomeId only (universal; not tied to celebrity or event type). Uses <see cref="IDbContextTransaction"/>
+/// so ledger updates and order-book updates succeed or fail together (atomicity). Rejects orders for unregistered outcomes
+/// (if IOutcomeRegistry provided) and insufficient buyer funds. After a successful placement, if the user is a Master
+/// (has followers), mirrors the order for each follower via CopyTradingService.
 /// </summary>
 public class MarketService
 {

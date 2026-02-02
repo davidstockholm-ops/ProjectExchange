@@ -4,16 +4,17 @@ using ProjectExchange.Accounting.Domain.Abstractions;
 using ProjectExchange.Accounting.Domain.Entities;
 using ProjectExchange.Accounting.Domain.Enums;
 using ProjectExchange.Accounting.Domain.Services;
+using ProjectExchange.Core.Markets;
 
 namespace ProjectExchange.Core.Celebrity;
 
 /// <summary>
-/// Auto-Settlement Agent: handles the outcome of celebrity trades. When an outcome is reached,
-/// automatically settles the related clearing transaction(s) by posting Settlement-phase
-/// transactions (reverse entries) that reference each clearing tx. Idempotent: already-settled
-/// clearing transactions are skipped.
+/// Auto-Settlement Agent: handles the outcome of any event (Base, Flash, Celebrity, Sports).
+/// When an outcome is reached, settles the related clearing transaction(s) by posting Settlement-phase
+/// transactions (reverse entries). Identifies clearing transactions by OutcomeId only (universal secondary market).
+/// Idempotent: already-settled clearing transactions are skipped. Implements IOutcomeSettlementService for oracles.
 /// </summary>
-public class AutoSettlementAgent
+public class AutoSettlementAgent : IOutcomeSettlementService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly CopyTradingEngine _copyTradingEngine;
@@ -36,7 +37,7 @@ public class AutoSettlementAgent
     /// <param name="sourceVerificationList">Optional list of sources the agent used to verify the outcome.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Result with newly settled transaction IDs, any already-settled clearing IDs, and optional confidence/sources.</returns>
-    public async Task<SettlementResult> SettleOutcomeAsync(
+    public async Task<OutcomeReachedResult> SettleOutcomeAsync(
         string outcomeId,
         decimal? confidenceScore = null,
         IReadOnlyList<string>? sourceVerificationList = null,
@@ -44,7 +45,7 @@ public class AutoSettlementAgent
     {
         var clearingTxIds = _copyTradingEngine.GetClearingTransactionIdsForOutcome(outcomeId);
         if (clearingTxIds.Count == 0)
-            return new SettlementResult(outcomeId, NewSettlementTransactionIds: [], AlreadySettledClearingIds: [], Message: "No clearing transactions found for this outcome. Call POST /api/celebrity/simulate with the same outcomeId first (matching is case-insensitive). If the app restarted, simulate again before outcome-reached.", confidenceScore, sourceVerificationList ?? Array.Empty<string>());
+            return new OutcomeReachedResult(outcomeId, NewSettlementTransactionIds: [], AlreadySettledClearingIds: [], Message: "No clearing transactions found for this outcome. Call POST /api/celebrity/simulate with the same outcomeId first (matching is case-insensitive). If the app restarted, simulate again before outcome-reached.", confidenceScore, sourceVerificationList ?? Array.Empty<string>());
 
         await using var scope = _scopeFactory.CreateAsyncScope();
         var ledgerService = scope.ServiceProvider.GetRequiredService<LedgerService>();
@@ -89,7 +90,7 @@ public class AutoSettlementAgent
             ? $"Settled {newSettlementIds.Count - alreadySettledClearingIds.Count} new; {alreadySettledClearingIds.Count} already settled."
             : "Auto-Settlement completed for all clearing transactions.";
 
-        return new SettlementResult(
+        return new OutcomeReachedResult(
             outcomeId,
             newSettlementIds,
             alreadySettledClearingIds,
@@ -101,12 +102,3 @@ public class AutoSettlementAgent
     /// <summary>Whether the given clearing transaction has already been settled.</summary>
     public bool IsSettled(Guid clearingTransactionId) => _settledClearingToSettlementTx.ContainsKey(clearingTransactionId);
 }
-
-/// <summary>Result of handling an outcome via the Auto-Settlement Agent. Includes optional confidence and sources for Agentic AI.</summary>
-public record SettlementResult(
-    string OutcomeId,
-    IReadOnlyList<Guid> NewSettlementTransactionIds,
-    IReadOnlyList<Guid> AlreadySettledClearingIds,
-    string Message,
-    decimal? ConfidenceScore = null,
-    IReadOnlyList<string>? SourceVerificationList = null);

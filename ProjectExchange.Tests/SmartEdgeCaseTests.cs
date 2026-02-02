@@ -68,7 +68,7 @@ public class SmartEdgeCaseTests
     public void CelebrityOracle_CreateMarketEvent_EmptyTitle_Throws()
     {
         var orderBookStore = new OrderBookStore();
-        var oracle = new CelebrityOracleService(orderBookStore);
+        var oracle = new CelebrityOracleService(orderBookStore, new ServiceCollection().BuildServiceProvider());
         Assert.Throws<ArgumentException>(() =>
             oracle.CreateMarketEvent("Drake", "", "Flash", 5));
         Assert.Throws<ArgumentException>(() =>
@@ -79,7 +79,7 @@ public class SmartEdgeCaseTests
     public void CelebrityOracle_SimulateTrade_ZeroAmount_Throws()
     {
         var orderBookStore = new OrderBookStore();
-        var oracle = new CelebrityOracleService(orderBookStore);
+        var oracle = new CelebrityOracleService(orderBookStore, new ServiceCollection().BuildServiceProvider());
         var operatorId = Guid.NewGuid();
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             oracle.SimulateTrade(operatorId, 0m, "outcome-x"));
@@ -89,7 +89,7 @@ public class SmartEdgeCaseTests
     public void CelebrityOracle_SimulateTrade_EmptyOutcomeId_Throws()
     {
         var orderBookStore = new OrderBookStore();
-        var oracle = new CelebrityOracleService(orderBookStore);
+        var oracle = new CelebrityOracleService(orderBookStore, new ServiceCollection().BuildServiceProvider());
         var operatorId = Guid.NewGuid();
         Assert.Throws<ArgumentException>(() =>
             oracle.SimulateTrade(operatorId, 100m, ""));
@@ -101,7 +101,7 @@ public class SmartEdgeCaseTests
     public async Task Unfollow_ThenCopyTrade_ExcludesUnfollowedUser()
     {
         var (accountRepo, ledgerService, copyTradingService, marketService) = EnterpriseTestSetup.CreateSocialStack();
-        var oracle = new CelebrityOracleService(new OrderBookStore());
+        var oracle = new CelebrityOracleService(new OrderBookStore(), new ServiceCollection().BuildServiceProvider());
         var masterId = Guid.NewGuid();
         var followerA = Guid.NewGuid();
         var followerB = Guid.NewGuid();
@@ -214,6 +214,7 @@ public class SmartEdgeCaseTests
         var (_, _, _, copyTradingEngine, autoSettlementAgent) = EnterpriseTestSetup.CreateCelebrityStack();
         var result = await autoSettlementAgent.SettleOutcomeAsync("outcome-no-clearing-txs");
         Assert.Empty(result.NewSettlementTransactionIds);
+        Assert.Equal("outcome-no-clearing-txs", result.OutcomeId);
         Assert.Empty(result.AlreadySettledClearingIds);
         Assert.Contains("No clearing transactions", result.Message);
     }

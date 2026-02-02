@@ -17,11 +17,12 @@ builder.Services.AddSwaggerGen(options =>
     {
         Title = "Project Exchange API",
         Version = "v1",
-        Description = "Clearing & Settlement platform: markets, order books (per outcome), celebrity copy-trading, and auto-settlement. Use **Active Events** to list tradeable markets; use **Order Book** to inspect bids/asks for an outcome."
+        Description = "Clearing & Settlement. **Market** (api/markets): base/create, flash/create, celebrity/create, celebrity/simulate, outcome-reached, active, orderbook. **Wallet** (api/wallet): create account."
     });
     var xmlPath = Path.Combine(AppContext.BaseDirectory, "ProjectExchange.Core.xml");
     if (File.Exists(xmlPath))
         options.IncludeXmlComments(xmlPath);
+    options.TagActionsBy(api => new[] { api.ActionDescriptor.RouteValues["controller"] ?? "Default" });
 });
 builder.Services.AddControllers();
 
@@ -44,10 +45,16 @@ builder.Services.AddScoped<MarketService>();
 // Social copy-trading: follow graph (singleton)
 builder.Services.AddSingleton<CopyTradingService>();
 
-// Celebrity module: outcome oracle (multi-actor), copy-trading, auto-settlement. Singletons so in-memory state is shared.
-builder.Services.AddSingleton<IOutcomeOracle, CelebrityOracleService>();
-builder.Services.AddSingleton<CopyTradingEngine>();
+// Oracle architecture: no circular deps. BaseOracleService takes IServiceProvider and resolves
+// IOutcomeSettlementService only when NotifyOutcomeReachedAsync runs (Oracle → Agent → CopyTradingEngine → Oracle).
+// Controllers use only IMarketOracle/IOutcomeOracle; they never take AutoSettlementAgent directly.
 builder.Services.AddSingleton<AutoSettlementAgent>();
+builder.Services.AddSingleton<IOutcomeSettlementService>(sp => sp.GetRequiredService<AutoSettlementAgent>());
+builder.Services.AddSingleton<CopyTradingEngine>();
+builder.Services.AddSingleton<IOutcomeOracle, CelebrityOracleService>();
+// IMarketOracle → same instance as IOutcomeOracle (CelebrityOracleService implements both). MarketController injects IMarketOracle without error.
+builder.Services.AddSingleton<IMarketOracle>(sp => sp.GetRequiredService<IOutcomeOracle>());
+builder.Services.AddSingleton<FlashOracleService>();
 
 var app = builder.Build();
 
@@ -72,29 +79,9 @@ app.UseHttpsRedirection();
 
 app.MapControllers();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast")
-.WithOpenApi();
+// Simple health check: GET /health returns 200 when the app is up
+app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "ProjectExchange" }))
+    .WithName("Health")
+    .WithTags("Health");
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

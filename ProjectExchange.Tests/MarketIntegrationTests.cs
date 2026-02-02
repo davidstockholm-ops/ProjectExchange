@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using ProjectExchange.Accounting.Domain.Abstractions;
 using ProjectExchange.Accounting.Domain.Entities;
 using ProjectExchange.Accounting.Domain.Enums;
@@ -72,7 +73,7 @@ public class MarketIntegrationTests
     public void OracleToMarket_CreateMarketEvent_OrderBookInitializedAndEventInGetActiveEvents()
     {
         var (accountRepo, _, _, marketService, orderBookStore) = EnterpriseTestSetup.CreateMarketStackWithStore();
-        var oracle = new CelebrityOracleService(orderBookStore);
+        var oracle = new CelebrityOracleService(orderBookStore, new ServiceCollection().BuildServiceProvider());
 
         var evt = oracle.CreateMarketEvent("Drake", "Will X win?", "Flash", 5);
 
@@ -96,7 +97,7 @@ public class MarketIntegrationTests
     public void OracleToMarket_DrakeAndElonMarkets_SameOracle_BothActiveAndTrackedByActor()
     {
         var (_, _, _, marketService, orderBookStore) = EnterpriseTestSetup.CreateMarketStackWithStore();
-        var oracle = new CelebrityOracleService(orderBookStore);
+        var oracle = new CelebrityOracleService(orderBookStore, new ServiceCollection().BuildServiceProvider());
 
         var drakeEvt = oracle.CreateMarketEvent("Drake", "Will Drake win?", "Flash", 5);
         var elonEvt = oracle.CreateMarketEvent("Elon", "Will Elon tweet?", "Base", 60);

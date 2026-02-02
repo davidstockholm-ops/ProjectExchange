@@ -4,33 +4,40 @@ using ProjectExchange.Core.Markets;
 namespace ProjectExchange.Core.Celebrity;
 
 /// <summary>
-/// Outcome oracle that handles multiple celebrities (actors) by ID. Simulates celebrity trade events
-/// (e.g. Drake or Elon betting on an outcome). Emits TradeProposed for CopyTradingEngine; creates
-/// market events (Flash/Base), registers OrderBooks, and broadcasts MarketOpened.
+/// Outcome oracle that handles multiple celebrities (actors) by ID. Extends BaseOracleService with
+/// SimulateTrade and TradeProposed for copy-trading. Creates market events (Flash/Base) via the base
+/// generic logic; celebrity-specific CreateMarketEvent(actorId, ...) passes actorId in context.
 /// </summary>
-public class CelebrityOracleService : IOutcomeOracle
+public class CelebrityOracleService : BaseOracleService, IOutcomeOracle
 {
     public const string OracleIdValue = "CelebrityOracle";
 
-    private readonly IOrderBookStore _orderBookStore;
-    private readonly IOutcomeRegistry? _outcomeRegistry;
-    private readonly ConcurrentDictionary<Guid, MarketEvent> _events = new();
-
-    public CelebrityOracleService(IOrderBookStore orderBookStore, IOutcomeRegistry? outcomeRegistry = null)
+    public CelebrityOracleService(
+        IOrderBookStore orderBookStore,
+        IServiceProvider serviceProvider,
+        IOutcomeRegistry? outcomeRegistry = null)
+        : base(orderBookStore, serviceProvider, outcomeRegistry)
     {
-        _orderBookStore = orderBookStore ?? throw new ArgumentNullException(nameof(orderBookStore));
-        _outcomeRegistry = outcomeRegistry;
     }
 
-    public string OracleId => OracleIdValue;
+    public override string OracleId => OracleIdValue;
 
     public event EventHandler<CelebrityTradeSignal>? TradeProposed;
-    public event EventHandler<MarketOpenedEventArgs>? MarketOpened;
 
     /// <summary>
-    /// Creates a market event for the given actor (celebrity). Registers an OrderBook for the outcome and broadcasts MarketOpened.
+    /// Celebrity-specific overload: creates a market event for the given actor. Delegates to base CreateMarketEvent
+    /// so that base logic runs: event stored in Events, OutcomeId registered, OrderBook created, MarketOpened raised.
     /// </summary>
     public MarketEvent CreateMarketEvent(string actorId, string title, string type, int durationMinutes)
+    {
+        var context = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["actorId"] = string.IsNullOrWhiteSpace(actorId) ? "Unknown" : actorId.Trim()
+        };
+        return CreateMarketEvent(title, type, durationMinutes, context);
+    }
+
+    protected override MarketEvent CreateMarketEventCore(string title, string type, int durationMinutes, IReadOnlyDictionary<string, string>? context)
     {
         if (string.IsNullOrWhiteSpace(title))
             throw new ArgumentException("Title is required.", nameof(title));
@@ -40,22 +47,9 @@ public class CelebrityOracleService : IOutcomeOracle
         var outcomeId = "outcome-" + id.ToString("N");
         var now = DateTimeOffset.UtcNow;
         var expiresAt = now.AddMinutes(effectiveDuration);
-        var safeActorId = string.IsNullOrWhiteSpace(actorId) ? "Unknown" : actorId.Trim();
+        var actorId = context != null && context.TryGetValue("actorId", out var a) ? a : "Unknown";
 
-        var evt = new MarketEvent(id, title, type, outcomeId, safeActorId, OracleId, effectiveDuration, now, expiresAt);
-        _events[id] = evt;
-
-        _outcomeRegistry?.Register(outcomeId);
-        _orderBookStore.GetOrCreateOrderBook(outcomeId);
-        MarketOpened?.Invoke(this, new MarketOpenedEventArgs(evt));
-
-        return evt;
-    }
-
-    public IReadOnlyList<MarketEvent> GetActiveEvents()
-    {
-        var now = DateTimeOffset.UtcNow;
-        return _events.Values.Where(e => e.ExpiresAt > now).ToList();
+        return new MarketEvent(id, title, type, outcomeId, actorId, OracleId, effectiveDuration, now, expiresAt);
     }
 
     /// <summary>

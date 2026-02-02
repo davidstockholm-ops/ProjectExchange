@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
@@ -128,6 +130,7 @@ public static class EnterpriseTestSetup
 
     /// <summary>
     /// Celebrity stack: AccountRepo, LedgerService, Oracle, CopyTradingEngine, AutoSettlementAgent using EF and a fresh SQLite in-memory DB.
+    /// Uses full DI so CelebrityOracleService (BaseOracleService) can resolve IOutcomeSettlementService for NotifyOutcomeReachedAsync.
     /// </summary>
     public static (
         IAccountRepository AccountRepo,
@@ -137,17 +140,33 @@ public static class EnterpriseTestSetup
         AutoSettlementAgent AutoSettlementAgent) CreateCelebrityStack()
     {
         var context = CreateFreshDbContext();
-        var provider = CreateServiceProvider(context);
-        var scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
-        var orderBookStore = new OrderBookStore();
-        var oracle = new CelebrityOracleService(orderBookStore);
-        var copyTradingEngine = new CopyTradingEngine(scopeFactory, oracle);
-        var autoSettlementAgent = new AutoSettlementAgent(scopeFactory, copyTradingEngine);
-
+        var provider = CreateCelebrityServiceProvider(context);
         using var scope = provider.CreateScope();
         var accountRepo = scope.ServiceProvider.GetRequiredService<IAccountRepository>();
         var ledgerService = scope.ServiceProvider.GetRequiredService<LedgerService>();
+        var oracle = (CelebrityOracleService)scope.ServiceProvider.GetRequiredService<IOutcomeOracle>();
+        var copyTradingEngine = scope.ServiceProvider.GetRequiredService<CopyTradingEngine>();
+        var autoSettlementAgent = scope.ServiceProvider.GetRequiredService<AutoSettlementAgent>();
         return (accountRepo, ledgerService, oracle, copyTradingEngine, autoSettlementAgent);
+    }
+
+    /// <summary>
+    /// Builds a service provider with DbContext + Celebrity oracle stack (OrderBookStore, IOutcomeOracle, CopyTradingEngine, AutoSettlementAgent, IOutcomeSettlementService).
+    /// </summary>
+    public static IServiceProvider CreateCelebrityServiceProvider(ProjectExchangeDbContext context)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(context);
+        services.AddSingleton<IUnitOfWork>(sp => sp.GetRequiredService<ProjectExchangeDbContext>());
+        services.AddScoped<IAccountRepository, EfAccountRepository>();
+        services.AddScoped<ITransactionRepository, EfTransactionRepository>();
+        services.AddScoped<LedgerService>();
+        services.AddSingleton<IOrderBookStore, OrderBookStore>();
+        services.AddSingleton<IOutcomeOracle, CelebrityOracleService>();
+        services.AddSingleton<CopyTradingEngine>();
+        services.AddSingleton<AutoSettlementAgent>();
+        services.AddSingleton<IOutcomeSettlementService>(sp => sp.GetRequiredService<AutoSettlementAgent>());
+        return services.BuildServiceProvider();
     }
 
     /// <summary>
@@ -166,6 +185,7 @@ public static class EnterpriseTestSetup
 
     /// <summary>
     /// Full stack plus the DbContext (for integrity tests that query the same DB).
+    /// MarketService and Oracle share the same IOrderBookStore so oracle-created markets are visible to MarketService.
     /// </summary>
     public static (
         IAccountRepository AccountRepo,
@@ -176,15 +196,48 @@ public static class EnterpriseTestSetup
         ProjectExchangeDbContext Context) CreateFullStackWithContext()
     {
         var context = CreateFreshDbContext();
-        var provider = CreateServiceProvider(context);
+        var provider = CreateFullStackServiceProvider(context);
         using var scope = provider.CreateScope();
         var accountRepo = scope.ServiceProvider.GetRequiredService<IAccountRepository>();
-        var transactionRepo = scope.ServiceProvider.GetRequiredService<ITransactionRepository>();
         var ledgerService = scope.ServiceProvider.GetRequiredService<LedgerService>();
-        var orderBookStore = new OrderBookStore();
-        var copyTradingService = new CopyTradingService();
-        var marketService = new MarketService(orderBookStore, accountRepo, transactionRepo, context, copyTradingService, ledgerService);
-        var oracle = new CelebrityOracleService(orderBookStore);
+        var copyTradingService = scope.ServiceProvider.GetRequiredService<CopyTradingService>();
+        var marketService = scope.ServiceProvider.GetRequiredService<MarketService>();
+        var oracle = (CelebrityOracleService)provider.GetRequiredService<IOutcomeOracle>();
         return (accountRepo, ledgerService, copyTradingService, marketService, oracle, context);
     }
+
+    /// <summary>
+    /// Builds a service provider with full stack: DbContext, repos, ledger, OrderBookStore, CopyTradingService, MarketService, Oracle, CopyTradingEngine, AutoSettlementAgent.
+    /// </summary>
+    public static IServiceProvider CreateFullStackServiceProvider(ProjectExchangeDbContext context)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(context);
+        services.AddSingleton<IUnitOfWork>(sp => sp.GetRequiredService<ProjectExchangeDbContext>());
+        services.AddScoped<IAccountRepository, EfAccountRepository>();
+        services.AddScoped<ITransactionRepository, EfTransactionRepository>();
+        services.AddScoped<LedgerService>();
+        services.AddSingleton<IOrderBookStore, OrderBookStore>();
+        services.AddSingleton<CopyTradingService>();
+        services.AddScoped<MarketService>();
+        services.AddSingleton<IOutcomeOracle, CelebrityOracleService>();
+        services.AddSingleton<IMarketOracle>(sp => sp.GetRequiredService<IOutcomeOracle>());
+        services.AddSingleton<FlashOracleService>();
+        services.AddSingleton<CopyTradingEngine>();
+        services.AddSingleton<AutoSettlementAgent>();
+        services.AddSingleton<IOutcomeSettlementService>(sp => sp.GetRequiredService<AutoSettlementAgent>());
+        services.AddSingleton<IWebHostEnvironment>(new TestHostEnvironment());
+        return services.BuildServiceProvider();
+    }
+}
+
+/// <summary>Minimal IWebHostEnvironment for tests (e.g. MarketController with celebrity simulate).</summary>
+internal sealed class TestHostEnvironment : IWebHostEnvironment
+{
+    public string EnvironmentName { get; set; } = "Development";
+    public string ApplicationName { get; set; } = "ProjectExchange.Tests";
+    public string ContentRootPath { get; set; } = Directory.GetCurrentDirectory();
+    public string WebRootPath { get; set; } = "wwwroot";
+    public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
+    public IFileProvider WebRootFileProvider { get; set; } = new NullFileProvider();
 }

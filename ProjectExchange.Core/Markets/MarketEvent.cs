@@ -1,16 +1,26 @@
 namespace ProjectExchange.Core.Markets;
 
 /// <summary>
-/// A tradeable market event: Flash (short expiry) or Base (longer expiry).
-/// Tracks which IOutcomeOracle is responsible for its settlement and which actor (celebrity) it belongs to.
+/// Base tradeable market event type for any oracle (Base, Flash, Celebrity, Sports).
+/// Use Type for event kind; OutcomeId identifies the asset in the secondary market (liquid contracts).
+/// Adding new event types (e.g. Flash, Sports) does not require controller changes.
 /// </summary>
 public class MarketEvent
 {
+    /// <summary>Standard event types. Extend with "Flash", "Sports", etc. as needed.</summary>
+    public static class EventType
+    {
+        public const string Base = "Base";
+        public const string Flash = "Flash";
+        public const string Celebrity = "Celebrity";
+        public const string Sports = "Sports";
+    }
+
     public Guid Id { get; }
     public string Title { get; }
     public string Type { get; }
     public string OutcomeId { get; }
-    /// <summary>Actor (celebrity) ID this market is for (e.g. "Drake", "Elon").</summary>
+    /// <summary>Optional context (e.g. actor/celebrity ID). Implementation-specific.</summary>
     public string ActorId { get; }
     /// <summary>Identifier of the IOutcomeOracle responsible for settling this market.</summary>
     public string ResponsibleOracleId { get; }

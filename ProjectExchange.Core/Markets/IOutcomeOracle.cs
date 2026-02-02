@@ -1,31 +1,22 @@
 namespace ProjectExchange.Core.Markets;
 
 /// <summary>
-/// Outcome oracle: creates market events and proposes trades for settlement.
-/// Implementations (e.g. CelebrityOracleService) can handle multiple actors (celebrities) by ID.
+/// Celebrity (and copy-trading) oracle: extends IMarketOracle with trade simulation and TradeProposed.
+/// Creates market events with actor context and simulates celebrity trades for settlement.
 /// </summary>
-public interface IOutcomeOracle
+public interface IOutcomeOracle : IMarketOracle
 {
-    /// <summary>Unique identifier for this oracle (e.g. "CelebrityOracle"). Used by MarketEvent to track responsibility.</summary>
-    string OracleId { get; }
-
     /// <summary>Raised when the oracle simulates a trade. CopyTradingEngine subscribes and posts to the ledger.</summary>
     event EventHandler<CelebrityTradeSignal>? TradeProposed;
 
-    /// <summary>Raised when a new market is opened (OrderBook registered). For AI agents / subscribers.</summary>
-    event EventHandler<MarketOpenedEventArgs>? MarketOpened;
-
     /// <summary>
-    /// Creates a market event for the given actor (celebrity). Registers an OrderBook for the outcome and broadcasts MarketOpened.
+    /// Creates a market event for the given actor (celebrity). Convenience overload; calls base CreateMarketEvent with context.
     /// </summary>
     /// <param name="actorId">Identifier of the celebrity/actor (e.g. "Drake", "Elon").</param>
     /// <param name="title">Event title.</param>
     /// <param name="type">Flash or Base.</param>
     /// <param name="durationMinutes">Duration in minutes.</param>
     MarketEvent CreateMarketEvent(string actorId, string title, string type, int durationMinutes);
-
-    /// <summary>Returns all currently tradeable (non-expired) markets for this oracle.</summary>
-    IReadOnlyList<MarketEvent> GetActiveEvents();
 
     /// <summary>
     /// Simulates a celebrity trade. Raises TradeProposed (Clearing-phase flow).

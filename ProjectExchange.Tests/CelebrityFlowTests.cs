@@ -132,4 +132,42 @@ public class CelebrityFlowTests
         var balanceAfterSecond = await ledgerService.GetAccountBalanceAsync(celebrityAccountId, null);
         Assert.Equal(0m, balanceAfterSecond);
     }
+
+    /// <summary>
+    /// Outcome Reached via IMarketOracle.NotifyOutcomeReachedAsync (same path as MarketController outcome-reached).
+    /// Verifies that BaseOracleService resolves IOutcomeSettlementService lazily and settlement runs correctly.
+    /// </summary>
+    [Fact]
+    public async Task FullLifecycle_OutcomeReached_via_IMarketOracle_NotifyOutcomeReachedAsync()
+    {
+        var (accountRepo, ledgerService, oracle, copyTradingEngine, _) = CreateCelebrityStack();
+
+        var operatorId = Guid.NewGuid();
+        const decimal tradeAmount = 150m;
+        const string outcomeId = "outcome-via-oracle";
+        const string actorId = "Drake";
+
+        var celebrityAccountId = Guid.NewGuid();
+        var celebrityAccount = new Account(
+            celebrityAccountId,
+            CelebrityConstants.GetMainOperatingAccountName(actorId),
+            AccountType.Asset,
+            operatorId);
+        await accountRepo.CreateAsync(celebrityAccount);
+
+        var signal = oracle.SimulateTrade(operatorId, tradeAmount, outcomeId, "Via Oracle", actorId);
+        if (copyTradingEngine.GetLastClearingTransactionIdForOutcome(outcomeId) == null)
+            await copyTradingEngine.ExecuteCopyTradeAsync(signal);
+
+        var balanceAfterClearing = await ledgerService.GetAccountBalanceAsync(celebrityAccountId, null);
+        Assert.Equal(tradeAmount, balanceAfterClearing);
+
+        // Trigger Outcome Reached via oracle (BaseOracleService resolves IOutcomeSettlementService here)
+        var result = await oracle.NotifyOutcomeReachedAsync(outcomeId);
+
+        Assert.Equal(outcomeId, result.OutcomeId);
+        Assert.NotEmpty(result.NewSettlementTransactionIds);
+        var finalBalance = await ledgerService.GetAccountBalanceAsync(celebrityAccountId, null);
+        Assert.Equal(0m, finalBalance);
+    }
 }
