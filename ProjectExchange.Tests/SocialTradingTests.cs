@@ -95,15 +95,16 @@ public class SocialTradingTests
         Assert.True(result.MatchCount >= 1);
         Assert.True(result.TradeTransactionIds.Count >= 3);
 
+        // Buyers pay (Credit): balances decrease. Seller receives (Debit): balance increases.
         var celebrityBalance = await ledgerService.GetAccountBalanceAsync(celebrityAccount.Id, null);
         var f1Balance = await ledgerService.GetAccountBalanceAsync(f1Account.Id, null);
         var f2Balance = await ledgerService.GetAccountBalanceAsync(f2Account.Id, null);
         var sellerBalance = await ledgerService.GetAccountBalanceAsync(sellerAccount.Id, null);
 
-        Assert.Equal(50m, celebrityBalance);
-        Assert.Equal(10m, f1Balance);
-        Assert.Equal(10m, f2Balance);
-        Assert.Equal(-35m, sellerBalance);
+        Assert.Equal(0m, celebrityBalance);  // 25 - 25 paid
+        Assert.Equal(0m, f1Balance);        // 5 - 5 paid
+        Assert.Equal(0m, f2Balance);        // 5 - 5 paid
+        Assert.Equal(35m, sellerBalance);  // received 25+5+5
         Assert.Equal(35m, celebrityBalance + f1Balance + f2Balance + sellerBalance);
     }
 

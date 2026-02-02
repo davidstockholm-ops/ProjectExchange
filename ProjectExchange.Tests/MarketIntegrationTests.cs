@@ -62,10 +62,11 @@ public class MarketIntegrationTests
         Assert.NotEmpty(tradeTxns);
         Assert.Contains(tradeTxns, t => t.TotalAmount == amount);
 
+        // Buyer pays (Credit): balance decreases. Seller receives (Debit): balance increases.
         var buyerBalance = await ledgerService.GetAccountBalanceAsync(buyerAccount.Id, null);
         var sellerBalance = await ledgerService.GetAccountBalanceAsync(sellerAccount.Id, null);
-        Assert.Equal(amount * 2, buyerBalance);
-        Assert.Equal(-amount, sellerBalance);
+        Assert.Equal(0m, buyerBalance);           // started with amount, paid amount
+        Assert.Equal(amount, sellerBalance);      // received amount
         Assert.Equal(amount, buyerBalance + sellerBalance);
     }
 
@@ -165,15 +166,15 @@ public class MarketIntegrationTests
         var tradeTxns = buyerTxns.Where(t => t.Type == TransactionType.Trade).ToList();
         Assert.Equal(3, tradeTxns.Count);
 
-        decimal totalBuyerDebit = tradeTxns.Sum(t => t.TotalAmount);
-        Assert.Equal(30m * askPrice + 30m * askPrice + 40m * askPrice, totalBuyerDebit);
-        Assert.Equal(50m, totalBuyerDebit);
-        Assert.Equal(100m, await ledgerService.GetAccountBalanceAsync(buyerAccount.Id, null));
+        decimal totalTradeAmount = tradeTxns.Sum(t => t.TotalAmount);
+        Assert.Equal(30m * askPrice + 30m * askPrice + 40m * askPrice, totalTradeAmount);
+        Assert.Equal(50m, totalTradeAmount);
 
+        // Buyer pays (Credit): balance decreases. Seller receives (Debit): balance increases.
         var buyerBalance = await ledgerService.GetAccountBalanceAsync(buyerAccount.Id, null);
         var sellerBalance = await ledgerService.GetAccountBalanceAsync(sellerAccount.Id, null);
-        Assert.Equal(100m, buyerBalance);
-        Assert.Equal(-50m, sellerBalance);
+        Assert.Equal(0m, buyerBalance);   // started with 50, paid 50
+        Assert.Equal(50m, sellerBalance); // received 50
         Assert.Equal(50m, buyerBalance + sellerBalance);
     }
 

@@ -87,6 +87,7 @@ public class GrandFinalIntegrationTests
         Assert.True(result.MatchCount >= 1, $"{actorId}'s order should have matched.");
         Assert.True(result.TradeTransactionIds.Count >= 6, $"Six trades expected: 1 {actorId} + 5 Fans.");
 
+        // Buyers pay (Credit): balances decrease. Seller (LP) receives (Debit): balance increases.
         var celebrityBalance = await ledgerService.GetAccountBalanceAsync(celebrityAccount.Id, null);
         var fan1Balance = await ledgerService.GetAccountBalanceAsync(fan1Account.Id, null);
         var fan2Balance = await ledgerService.GetAccountBalanceAsync(fan2Account.Id, null);
@@ -95,13 +96,13 @@ public class GrandFinalIntegrationTests
         var fan5Balance = await ledgerService.GetAccountBalanceAsync(fan5Account.Id, null);
         var lpBalance = await ledgerService.GetAccountBalanceAsync(lpAccount.Id, null);
 
-        Assert.Equal(50m, celebrityBalance);
-        Assert.Equal(10m, fan1Balance);
-        Assert.Equal(10m, fan2Balance);
-        Assert.Equal(10m, fan3Balance);
-        Assert.Equal(10m, fan4Balance);
-        Assert.Equal(10m, fan5Balance);
-        Assert.Equal(-50m, lpBalance);
+        Assert.Equal(0m, celebrityBalance);  // 25 - 25 paid
+        Assert.Equal(0m, fan1Balance);      // 5 - 5 paid
+        Assert.Equal(0m, fan2Balance);
+        Assert.Equal(0m, fan3Balance);
+        Assert.Equal(0m, fan4Balance);
+        Assert.Equal(0m, fan5Balance);
+        Assert.Equal(50m, lpBalance);        // received 25 + 5*5
 
         var book = marketService.GetOrderBook(outcomeId);
         Assert.NotNull(book);

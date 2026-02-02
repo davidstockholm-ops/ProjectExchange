@@ -89,10 +89,11 @@ public class MarketService
                     if (buyerBalance < amount)
                         throw new InsufficientFundsException(amount, buyerBalance);
 
+                    // Buyer pays: Credit buyer (balance decreases). Seller receives: Debit seller (balance increases).
                     var entries = new List<JournalEntry>
                     {
-                        new(buyerAccountId, amount, EntryType.Debit, SettlementPhase.Clearing),
-                        new(sellerAccountId, amount, EntryType.Credit, SettlementPhase.Clearing)
+                        new(buyerAccountId, amount, EntryType.Credit, SettlementPhase.Clearing),
+                        new(sellerAccountId, amount, EntryType.Debit, SettlementPhase.Clearing)
                     };
 
                     var txId = Guid.NewGuid();
