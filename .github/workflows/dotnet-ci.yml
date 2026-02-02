@@ -9,6 +9,21 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    # Uncomment for integration tests that require PostgreSQL:
+    # services:
+    #   postgres:
+    #     image: postgres:16
+    #     env:
+    #       POSTGRES_USER: postgres
+    #       POSTGRES_PASSWORD: postgres
+    #       POSTGRES_DB: projectexchange_test
+    #     ports:
+    #       - 5432:5432
+    #     options: >-
+    #       --health-cmd pg_isready
+    #       --health-interval 10s
+    #       --health-timeout 5s
+    #       --health-retries 5
 
     steps:
       - name: Checkout
@@ -18,6 +33,7 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
+          cache: true
 
       - name: Restore
         run: dotnet restore ProjectExchange.sln
@@ -26,4 +42,6 @@ jobs:
         run: dotnet build ProjectExchange.sln --no-restore --configuration Release
 
       - name: Test
+        env:
+          ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=projectexchange_test;Username=postgres;Password=postgres"
         run: dotnet test ProjectExchange.sln --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx"
