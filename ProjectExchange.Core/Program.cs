@@ -85,3 +85,5 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "ProjectEx
     .WithTags("Health");
 
 app.Run();
+
+// Enterprise CI Trigger
