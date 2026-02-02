@@ -19,7 +19,7 @@ public class GrandFinalIntegrationTests
         LedgerService LedgerService,
         CopyTradingService CopyTradingService,
         MarketService MarketService,
-        DrakeOracleService Oracle) CreateFullStack() =>
+        CelebrityOracleService Oracle) CreateFullStack() =>
         EnterpriseTestSetup.CreateFullStack();
 
     [Fact]
@@ -71,7 +71,7 @@ public class GrandFinalIntegrationTests
         copyTradingService.Follow(fan4Id, drakeId);
         copyTradingService.Follow(fan5Id, drakeId);
 
-        var evt = oracle.CreateMarketEvent("Grand Final", "Flash", 5);
+        var evt = oracle.CreateMarketEvent("Drake", "Grand Final", "Flash", 5);
         var outcomeId = evt.OutcomeId;
         Assert.NotNull(outcomeId);
         Assert.True(evt.IsActive);

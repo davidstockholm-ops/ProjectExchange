@@ -228,7 +228,7 @@ public class DatabaseIntegrityTests
         copyTradingService.Follow(fan4Id, drakeId);
         copyTradingService.Follow(fan5Id, drakeId);
 
-        var evt = oracle.CreateMarketEvent("Integrity Grand Final", "Flash", 5);
+        var evt = oracle.CreateMarketEvent("Drake", "Integrity Grand Final", "Flash", 5);
         var outcomeId = evt.OutcomeId;
 
         var lpAsk = new Order(Guid.NewGuid(), liquidityProviderId, outcomeId, OrderType.Ask, 0.50m, 150m);

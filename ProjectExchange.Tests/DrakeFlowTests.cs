@@ -3,6 +3,7 @@ using ProjectExchange.Accounting.Domain.Entities;
 using ProjectExchange.Accounting.Domain.Enums;
 using ProjectExchange.Accounting.Domain.Services;
 using ProjectExchange.Core.Drake;
+using ProjectExchange.Core.Markets;
 
 namespace ProjectExchange.Tests;
 
@@ -16,7 +17,7 @@ public class DrakeFlowTests
     private static (
         IAccountRepository AccountRepo,
         LedgerService LedgerService,
-        DrakeOracleService Oracle,
+        CelebrityOracleService Oracle,
         CopyTradingEngine CopyTradingEngine,
         AutoSettlementAgent AutoSettlementAgent) CreateDrakeStack() =>
         EnterpriseTestSetup.CreateDrakeStack();
@@ -41,7 +42,7 @@ public class DrakeFlowTests
         await accountRepo.CreateAsync(drakeAccount);
 
         // 2. Simulate a trade (Clearing phase): oracle emits signal, CopyTradingEngine posts Clearing entries
-        var signal = oracle.SimulateTrade(operatorId, tradeAmount, outcomeId, outcomeName);
+        var signal = oracle.SimulateTrade(operatorId, tradeAmount, outcomeId, outcomeName, "Drake");
         var clearingTxId = copyTradingEngine.GetLastClearingTransactionIdForOutcome(outcomeId);
         if (clearingTxId == null)
             clearingTxId = await copyTradingEngine.ExecuteCopyTradeAsync(signal);
@@ -79,10 +80,10 @@ public class DrakeFlowTests
             operatorId);
         await accountRepo.CreateAsync(drakeAccount);
 
-        oracle.SimulateTrade(operatorId, tradeAmount, outcomeId, "Outcome Y");
+        oracle.SimulateTrade(operatorId, tradeAmount, outcomeId, "Outcome Y", "Drake");
         if (copyTradingEngine.GetLastClearingTransactionIdForOutcome(outcomeId) == null)
             await copyTradingEngine.ExecuteCopyTradeAsync(
-                new DrakeTradeSignal(Guid.NewGuid(), operatorId, tradeAmount, outcomeId, "Outcome Y"));
+                new CelebrityTradeSignal(Guid.NewGuid(), operatorId, tradeAmount, outcomeId, "Outcome Y", "Drake"));
 
         var clearingOnly = await ledgerService.GetAccountBalanceAsync(drakeAccountId, SettlementPhase.Clearing);
         Assert.Equal(tradeAmount, clearingOnly);
@@ -113,10 +114,10 @@ public class DrakeFlowTests
             operatorId);
         await accountRepo.CreateAsync(drakeAccount);
 
-        oracle.SimulateTrade(operatorId, tradeAmount, outcomeId, "Idempotent");
+        oracle.SimulateTrade(operatorId, tradeAmount, outcomeId, "Idempotent", "Drake");
         if (copyTradingEngine.GetLastClearingTransactionIdForOutcome(outcomeId) == null)
             await copyTradingEngine.ExecuteCopyTradeAsync(
-                new DrakeTradeSignal(Guid.NewGuid(), operatorId, tradeAmount, outcomeId, "Idempotent"));
+                new CelebrityTradeSignal(Guid.NewGuid(), operatorId, tradeAmount, outcomeId, "Idempotent", "Drake"));
 
         var result1 = await autoSettlementAgent.SettleOutcomeAsync(outcomeId);
         Assert.NotEmpty(result1.NewSettlementTransactionIds);

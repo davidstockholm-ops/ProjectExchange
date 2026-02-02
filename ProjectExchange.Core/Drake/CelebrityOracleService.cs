@@ -4,33 +4,33 @@ using ProjectExchange.Core.Markets;
 namespace ProjectExchange.Core.Drake;
 
 /// <summary>
-/// Simulates celebrity trade events (e.g. Drake betting on an outcome).
-/// Emits <see cref="TradeProposed"/> for CopyTradingEngine to execute; all traffic uses Clearing phase.
-/// Also creates market events (Flash/Base), registers OrderBooks, and broadcasts MarketOpened.
+/// Outcome oracle that handles multiple celebrities (actors) by ID. Simulates celebrity trade events
+/// (e.g. Drake or Elon betting on an outcome). Emits TradeProposed for CopyTradingEngine; creates
+/// market events (Flash/Base), registers OrderBooks, and broadcasts MarketOpened.
 /// </summary>
-public class DrakeOracleService
+public class CelebrityOracleService : IOutcomeOracle
 {
+    public const string OracleIdValue = "CelebrityOracle";
+
     private readonly IOrderBookStore _orderBookStore;
     private readonly IOutcomeRegistry? _outcomeRegistry;
     private readonly ConcurrentDictionary<Guid, MarketEvent> _events = new();
 
-    public DrakeOracleService(IOrderBookStore orderBookStore, IOutcomeRegistry? outcomeRegistry = null)
+    public CelebrityOracleService(IOrderBookStore orderBookStore, IOutcomeRegistry? outcomeRegistry = null)
     {
         _orderBookStore = orderBookStore ?? throw new ArgumentNullException(nameof(orderBookStore));
         _outcomeRegistry = outcomeRegistry;
     }
 
-    /// <summary>Raised when Drake simulates a trade. CopyTradingEngine subscribes and posts to the ledger.</summary>
-    public event EventHandler<DrakeTradeSignal>? TradeProposed;
+    public string OracleId => OracleIdValue;
 
-    /// <summary>Raised when a new market is opened (OrderBook registered). For AI agents / subscribers.</summary>
+    public event EventHandler<CelebrityTradeSignal>? TradeProposed;
     public event EventHandler<MarketOpenedEventArgs>? MarketOpened;
 
     /// <summary>
-    /// Creates a market event: Flash (short expiry) or Base (longer expiry).
-    /// Registers an OrderBook for the outcome and broadcasts MarketOpened.
+    /// Creates a market event for the given actor (celebrity). Registers an OrderBook for the outcome and broadcasts MarketOpened.
     /// </summary>
-    public MarketEvent CreateMarketEvent(string title, string type, int durationMinutes)
+    public MarketEvent CreateMarketEvent(string actorId, string title, string type, int durationMinutes)
     {
         if (string.IsNullOrWhiteSpace(title))
             throw new ArgumentException("Title is required.", nameof(title));
@@ -40,8 +40,9 @@ public class DrakeOracleService
         var outcomeId = "outcome-" + id.ToString("N");
         var now = DateTimeOffset.UtcNow;
         var expiresAt = now.AddMinutes(effectiveDuration);
+        var safeActorId = string.IsNullOrWhiteSpace(actorId) ? "Unknown" : actorId.Trim();
 
-        var evt = new MarketEvent(id, title, type, outcomeId, effectiveDuration, now, expiresAt);
+        var evt = new MarketEvent(id, title, type, outcomeId, safeActorId, OracleId, effectiveDuration, now, expiresAt);
         _events[id] = evt;
 
         _outcomeRegistry?.Register(outcomeId);
@@ -51,7 +52,6 @@ public class DrakeOracleService
         return evt;
     }
 
-    /// <summary>Returns all currently tradeable (non-expired) markets.</summary>
     public IReadOnlyList<MarketEvent> GetActiveEvents()
     {
         var now = DateTimeOffset.UtcNow;
@@ -59,21 +59,22 @@ public class DrakeOracleService
     }
 
     /// <summary>
-    /// Simulates Drake placing a bet on an outcome. Raises <see cref="TradeProposed"/> (Clearing-phase flow).
+    /// Simulates a celebrity placing a bet on an outcome. Raises TradeProposed (Clearing-phase flow).
     /// </summary>
-    public DrakeTradeSignal SimulateTrade(Guid operatorId, decimal amount, string outcomeId, string outcomeName = "Outcome X")
+    public CelebrityTradeSignal SimulateTrade(Guid operatorId, decimal amount, string outcomeId, string outcomeName = "Outcome X", string? actorId = null)
     {
         if (amount <= 0)
             throw new ArgumentOutOfRangeException(nameof(amount), "Amount must be positive.");
         if (string.IsNullOrWhiteSpace(outcomeId))
             throw new ArgumentException("OutcomeId is required.", nameof(outcomeId));
 
-        var signal = new DrakeTradeSignal(
+        var signal = new CelebrityTradeSignal(
             TradeId: Guid.NewGuid(),
             OperatorId: operatorId,
             Amount: amount,
             OutcomeId: outcomeId,
-            OutcomeName: string.IsNullOrWhiteSpace(outcomeName) ? "Outcome X" : outcomeName);
+            OutcomeName: string.IsNullOrWhiteSpace(outcomeName) ? "Outcome X" : outcomeName,
+            ActorId: string.IsNullOrWhiteSpace(actorId) ? null : actorId.Trim());
 
         TradeProposed?.Invoke(this, signal);
         return signal;

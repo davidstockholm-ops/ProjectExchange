@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 namespace ProjectExchange.Core.Markets;
 
 /// <summary>
-/// In-memory registry of valid outcome IDs. Outcomes are registered when a market is opened (e.g. DrakeOracleService).
+/// In-memory registry of valid outcome IDs. Outcomes are registered when a market is opened (e.g. CelebrityOracleService).
 /// </summary>
 public class OutcomeRegistry : IOutcomeRegistry
 {

@@ -4,12 +4,13 @@ using ProjectExchange.Accounting.Domain.Abstractions;
 using ProjectExchange.Accounting.Domain.Entities;
 using ProjectExchange.Accounting.Domain.Enums;
 using ProjectExchange.Accounting.Domain.Services;
+using ProjectExchange.Core.Markets;
 
 namespace ProjectExchange.Core.Drake;
 
 /// <summary>
-/// Subscribes to DrakeOracleService and uses LedgerService to execute copy-trades:
-/// debit Drake Main Operating Account, credit a Market Holding Account per outcome. All entries Clearing.
+/// Subscribes to IOutcomeOracle (e.g. CelebrityOracleService) and uses LedgerService to execute copy-trades:
+/// debit the celebrity Main Operating Account (per actor), credit a Market Holding Account per outcome. All entries Clearing.
 /// </summary>
 public class CopyTradingEngine
 {
@@ -19,7 +20,7 @@ public class CopyTradingEngine
     /// <summary>Outcome-specific Market Holding accounts (one per outcome). Key = outcomeId (case-insensitive).</summary>
     private readonly ConcurrentDictionary<string, Guid> _outcomeToMarketHoldingAccountId = new(StringComparer.OrdinalIgnoreCase);
 
-    public CopyTradingEngine(IServiceScopeFactory scopeFactory, DrakeOracleService oracle)
+    public CopyTradingEngine(IServiceScopeFactory scopeFactory, IOutcomeOracle oracle)
     {
         _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
         if (oracle == null) throw new ArgumentNullException(nameof(oracle));
@@ -47,7 +48,7 @@ public class CopyTradingEngine
         return list.Count > 0 ? list[^1] : null;
     }
 
-    private void OnTradeProposed(object? sender, DrakeTradeSignal signal)
+    private void OnTradeProposed(object? sender, CelebrityTradeSignal signal)
     {
         try
         {
@@ -61,28 +62,29 @@ public class CopyTradingEngine
     }
 
     /// <summary>
-    /// Executes the copy-trade: debit Drake Main Operating Account, credit Market Holding Account for this outcome (Clearing).
+    /// Executes the copy-trade: debit the celebrity Main Operating Account (per actor), credit Market Holding Account for this outcome (Clearing).
     /// </summary>
-    public async Task<Guid> ExecuteCopyTradeAsync(DrakeTradeSignal signal, CancellationToken cancellationToken = default)
+    public async Task<Guid> ExecuteCopyTradeAsync(CelebrityTradeSignal signal, CancellationToken cancellationToken = default)
     {
-        Console.WriteLine($"[CopyTradingEngine] ExecuteCopyTradeAsync: OperatorId={signal.OperatorId}, OutcomeId={signal.OutcomeId}, Amount={signal.Amount}");
+        var mainAccountName = DrakeConstants.GetMainOperatingAccountName(signal.ActorId);
+        Console.WriteLine($"[CopyTradingEngine] ExecuteCopyTradeAsync: OperatorId={signal.OperatorId}, ActorId={signal.ActorId}, OutcomeId={signal.OutcomeId}, Amount={signal.Amount}");
 
         await using var scope = _scopeFactory.CreateAsyncScope();
         var accountRepository = scope.ServiceProvider.GetRequiredService<IAccountRepository>();
         var ledgerService = scope.ServiceProvider.GetRequiredService<LedgerService>();
 
-        var drakeAccounts = await accountRepository.GetByOperatorIdAsync(signal.OperatorId, cancellationToken);
-        var accountNames = drakeAccounts.Select(a => a.Name).ToList();
-        Console.WriteLine($"[CopyTradingEngine] Accounts for operator {signal.OperatorId}: count={drakeAccounts.Count}, names=[{string.Join(", ", accountNames)}]");
+        var celebrityAccounts = await accountRepository.GetByOperatorIdAsync(signal.OperatorId, cancellationToken);
+        var accountNames = celebrityAccounts.Select(a => a.Name).ToList();
+        Console.WriteLine($"[CopyTradingEngine] Accounts for operator {signal.OperatorId}: count={celebrityAccounts.Count}, names=[{string.Join(", ", accountNames)}]");
 
-        var drakeAccount = drakeAccounts.FirstOrDefault(a => a.Name == DrakeConstants.DrakeMainOperatingAccountName);
-        if (drakeAccount == null)
+        var mainAccount = celebrityAccounts.FirstOrDefault(a => a.Name == mainAccountName);
+        if (mainAccount == null)
         {
-            Console.WriteLine($"[CopyTradingEngine] FAILED: Account '{DrakeConstants.DrakeMainOperatingAccountName}' NOT FOUND for operator {signal.OperatorId}. Create the wallet first (POST /api/wallet/create with Name=\"{DrakeConstants.DrakeMainOperatingAccountName}\").");
+            Console.WriteLine($"[CopyTradingEngine] FAILED: Account '{mainAccountName}' NOT FOUND for operator {signal.OperatorId}. Create the wallet first (POST /api/wallet/create with Name=\"{mainAccountName}\").");
             throw new InvalidOperationException(
-                $"Account '{DrakeConstants.DrakeMainOperatingAccountName}' not found for operator {signal.OperatorId}. Create the wallet first.");
+                $"Account '{mainAccountName}' not found for operator {signal.OperatorId}. Create the wallet first.");
         }
-        Console.WriteLine($"[CopyTradingEngine] Found Drake Main Operating Account: Id={drakeAccount.Id}, Name={drakeAccount.Name}");
+        Console.WriteLine($"[CopyTradingEngine] Found Main Operating Account: Id={mainAccount.Id}, Name={mainAccount.Name}");
 
         var marketAccount = await GetOrCreateMarketHoldingAccountForOutcomeAsync(
             signal.OutcomeId,
@@ -92,7 +94,7 @@ public class CopyTradingEngine
 
         var entries = new List<JournalEntry>
         {
-            new(drakeAccount.Id, signal.Amount, EntryType.Debit, SettlementPhase.Clearing),
+            new(mainAccount.Id, signal.Amount, EntryType.Debit, SettlementPhase.Clearing),
             new(marketAccount.Id, signal.Amount, EntryType.Credit, SettlementPhase.Clearing)
         };
 

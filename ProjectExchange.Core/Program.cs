@@ -32,8 +32,8 @@ builder.Services.AddScoped<MarketService>();
 // Social copy-trading: follow graph (singleton)
 builder.Services.AddSingleton<CopyTradingService>();
 
-// Drake module: singletons so in-memory state is shared between simulate and outcome-reached
-builder.Services.AddSingleton<DrakeOracleService>();
+// Drake/Celebrity module: outcome oracle (multi-actor), copy-trading, auto-settlement. Singletons so in-memory state is shared.
+builder.Services.AddSingleton<IOutcomeOracle, CelebrityOracleService>();
 builder.Services.AddSingleton<CopyTradingEngine>();
 builder.Services.AddSingleton<AutoSettlementAgent>();
 

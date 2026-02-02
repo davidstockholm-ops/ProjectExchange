@@ -1,7 +1,8 @@
 namespace ProjectExchange.Core.Drake;
 
 /// <summary>
-/// Well-known IDs and names for Drake / copy-trading and market holding accounts.
+/// Well-known IDs and names for celebrity copy-trading and market holding accounts.
+/// Supports multiple actors (e.g. Drake, Elon) via GetMainOperatingAccountName(actorId).
 /// </summary>
 public static class DrakeConstants
 {
@@ -11,7 +12,12 @@ public static class DrakeConstants
     /// <summary>Name prefix for outcome-specific Market Holding accounts (one per outcome).</summary>
     public const string MarketHoldingAccountNamePrefix = "Market Holding Account - ";
 
+    /// <summary>Default celebrity main operating account name (backward compatibility).</summary>
     public const string DrakeMainOperatingAccountName = "Drake Main Operating Account";
+
+    /// <summary>Returns the main operating account name for the given actor (e.g. "Drake" -> "Drake Main Operating Account").</summary>
+    public static string GetMainOperatingAccountName(string? actorId) =>
+        string.IsNullOrWhiteSpace(actorId) ? DrakeMainOperatingAccountName : $"{actorId.Trim()} Main Operating Account";
 
     /// <summary>Default Master Trader ID used when simulating a trade (copy-trading). Use this operator when calling Simulate so mirrors apply.</summary>
     public static readonly Guid MasterTraderId = Guid.Parse("00000000-0000-0000-0000-000000000002");

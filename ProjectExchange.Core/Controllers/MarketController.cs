@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using ProjectExchange.Core.Drake;
 using ProjectExchange.Core.Markets;
 
 namespace ProjectExchange.Core.Controllers;
@@ -8,15 +7,15 @@ namespace ProjectExchange.Core.Controllers;
 [Route("api/markets")]
 public class MarketController : ControllerBase
 {
-    private readonly DrakeOracleService _oracle;
+    private readonly IOutcomeOracle _oracle;
 
-    public MarketController(DrakeOracleService oracle)
+    public MarketController(IOutcomeOracle oracle)
     {
         _oracle = oracle ?? throw new ArgumentNullException(nameof(oracle));
     }
 
     /// <summary>
-    /// Returns all currently tradeable (active, non-expired) markets.
+    /// Returns all currently tradeable (active, non-expired) markets for all celebrities (e.g. Drake, Elon).
     /// </summary>
     [HttpGet("active")]
     public IActionResult GetActive()
@@ -27,6 +26,8 @@ public class MarketController : ControllerBase
             e.Title,
             e.Type,
             e.OutcomeId,
+            e.ActorId,
+            e.ResponsibleOracleId,
             e.DurationMinutes,
             e.CreatedAt,
             e.ExpiresAt));
@@ -40,6 +41,8 @@ public record ActiveMarketResponse(
     string Title,
     string Type,
     string OutcomeId,
+    string ActorId,
+    string ResponsibleOracleId,
     int DurationMinutes,
     DateTimeOffset CreatedAt,
     DateTimeOffset ExpiresAt);

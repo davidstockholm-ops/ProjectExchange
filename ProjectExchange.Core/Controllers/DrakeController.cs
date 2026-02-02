@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using ProjectExchange.Core.Drake;
+using ProjectExchange.Core.Markets;
 
 namespace ProjectExchange.Core.Controllers;
 
@@ -7,12 +8,12 @@ namespace ProjectExchange.Core.Controllers;
 [Route("api/[controller]")]
 public class DrakeController : ControllerBase
 {
-    private readonly DrakeOracleService _oracle;
+    private readonly IOutcomeOracle _oracle;
     private readonly CopyTradingEngine _copyTradingEngine;
     private readonly AutoSettlementAgent _autoSettlementAgent;
 
     public DrakeController(
-        DrakeOracleService oracle,
+        IOutcomeOracle oracle,
         CopyTradingEngine copyTradingEngine,
         AutoSettlementAgent autoSettlementAgent)
     {
@@ -22,8 +23,8 @@ public class DrakeController : ControllerBase
     }
 
     /// <summary>
-    /// Triggers Drake oracle to simulate a celebrity trade (e.g. Drake betting on an outcome).
-    /// CopyTradingEngine subscribes and posts Clearing-phase debit (Drake Main Operating Account)
+    /// Triggers the outcome oracle to simulate a celebrity trade (e.g. Drake or Elon betting on an outcome).
+    /// CopyTradingEngine subscribes and posts Clearing-phase debit (celebrity Main Operating Account)
     /// and credit (Market Holding Account for that outcome). All transactions use Clearing for high-frequency traffic.
     /// </summary>
     [HttpPost("simulate")]
@@ -41,7 +42,8 @@ public class DrakeController : ControllerBase
             operatorId,
             request.Amount,
             request.OutcomeId.Trim(),
-            request.OutcomeName?.Trim() ?? "Outcome X");
+            request.OutcomeName?.Trim() ?? "Outcome X",
+            request.ActorId?.Trim());
 
         // Ensure state is stored in the same CopyTradingEngine instance used by outcome-reached (singleton)
         var clearingTransactionId = _copyTradingEngine.GetLastClearingTransactionIdForOutcome(signal.OutcomeId);
@@ -57,13 +59,15 @@ public class DrakeController : ControllerBase
             signal.Amount,
             signal.OutcomeId,
             signal.OutcomeName,
+            signal.ActorId,
             clearingTransactionId,
             "Clearing"));
     }
 
     /// <summary>
-    /// Marks outcome as reached and triggers the Auto-Settlement Agent to handle Drake trade outcomes:
+    /// Marks outcome as reached and triggers the Auto-Settlement Agent to handle celebrity trade outcomes:
     /// posts Settlement-phase transactions for each clearing transaction tied to this outcome. Idempotent.
+    /// Supports Agentic AI: optional ConfidenceScore and SourceVerificationList report how sure the agent is and which sources it used.
     /// </summary>
     [HttpPost("outcome-reached")]
     public async Task<ActionResult<OutcomeReachedResponse>> OutcomeReached(
@@ -76,29 +80,36 @@ public class DrakeController : ControllerBase
         var outcomeId = request.OutcomeId!.Trim();
         var result = await _autoSettlementAgent.SettleOutcomeAsync(
             outcomeId,
+            request.ConfidenceScore,
+            request.SourceVerificationList,
             cancellationToken);
 
         return Ok(new OutcomeReachedResponse(
             result.OutcomeId,
             result.NewSettlementTransactionIds,
             result.AlreadySettledClearingIds,
-            result.Message));
+            result.Message,
+            result.ConfidenceScore,
+            result.SourceVerificationList));
     }
 }
 
-public record SimulateTradeRequest(Guid OperatorId, decimal Amount, string OutcomeId, string? OutcomeName = null);
+public record SimulateTradeRequest(Guid OperatorId, decimal Amount, string OutcomeId, string? OutcomeName = null, string? ActorId = null);
 public record SimulateTradeResponse(
     Guid TradeId,
     Guid OperatorId,
     decimal Amount,
     string OutcomeId,
     string OutcomeName,
+    string? ActorId,
     Guid? ClearingTransactionId,
     string Phase);
 
-public record OutcomeReachedRequest(string? OutcomeId);
+public record OutcomeReachedRequest(string? OutcomeId, decimal? ConfidenceScore = null, IReadOnlyList<string>? SourceVerificationList = null);
 public record OutcomeReachedResponse(
     string OutcomeId,
     IReadOnlyList<Guid> SettlementTransactionIds,
     IReadOnlyList<Guid> AlreadySettledClearingIds,
-    string Message);
+    string Message,
+    decimal? ConfidenceScore = null,
+    IReadOnlyList<string>? SourceVerificationList = null);

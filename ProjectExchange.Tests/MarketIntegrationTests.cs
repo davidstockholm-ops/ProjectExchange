@@ -8,8 +8,8 @@ using ProjectExchange.Core.Markets;
 namespace ProjectExchange.Tests;
 
 /// <summary>
-/// Integration tests for MarketService, DrakeOracleService, and ledger: end-to-end trade,
-/// oracle-to-market (CreateMarketEvent → OrderBook + GetActiveEvents), and multiple matches.
+/// Integration tests for MarketService, CelebrityOracleService, and ledger: end-to-end trade,
+/// oracle-to-market (CreateMarketEvent(actorId) → OrderBook + GetActiveEvents), and multiple matches.
 /// Uses EF Core InMemory and enterprise repositories.
 /// </summary>
 public class MarketIntegrationTests
@@ -72,13 +72,15 @@ public class MarketIntegrationTests
     public void OracleToMarket_CreateMarketEvent_OrderBookInitializedAndEventInGetActiveEvents()
     {
         var (accountRepo, _, _, marketService, orderBookStore) = EnterpriseTestSetup.CreateMarketStackWithStore();
-        var oracle = new DrakeOracleService(orderBookStore);
+        var oracle = new CelebrityOracleService(orderBookStore);
 
-        var evt = oracle.CreateMarketEvent("Will X win?", "Flash", 5);
+        var evt = oracle.CreateMarketEvent("Drake", "Will X win?", "Flash", 5);
 
         Assert.NotNull(evt.OutcomeId);
         Assert.True(evt.IsActive);
         Assert.Equal("Flash", evt.Type);
+        Assert.Equal("Drake", evt.ActorId);
+        Assert.Equal(CelebrityOracleService.OracleIdValue, evt.ResponsibleOracleId);
 
         var book = marketService.GetOrderBook(evt.OutcomeId);
         Assert.NotNull(book);
@@ -88,6 +90,34 @@ public class MarketIntegrationTests
         var active = oracle.GetActiveEvents();
         Assert.NotEmpty(active);
         Assert.Contains(active, e => e.Id == evt.Id && e.OutcomeId == evt.OutcomeId);
+    }
+
+    [Fact]
+    public void OracleToMarket_DrakeAndElonMarkets_SameOracle_BothActiveAndTrackedByActor()
+    {
+        var (_, _, _, marketService, orderBookStore) = EnterpriseTestSetup.CreateMarketStackWithStore();
+        var oracle = new CelebrityOracleService(orderBookStore);
+
+        var drakeEvt = oracle.CreateMarketEvent("Drake", "Will Drake win?", "Flash", 5);
+        var elonEvt = oracle.CreateMarketEvent("Elon", "Will Elon tweet?", "Base", 60);
+
+        Assert.NotEqual(drakeEvt.OutcomeId, elonEvt.OutcomeId);
+        Assert.Equal("Drake", drakeEvt.ActorId);
+        Assert.Equal("Elon", elonEvt.ActorId);
+        Assert.Equal(CelebrityOracleService.OracleIdValue, drakeEvt.ResponsibleOracleId);
+        Assert.Equal(CelebrityOracleService.OracleIdValue, elonEvt.ResponsibleOracleId);
+
+        var active = oracle.GetActiveEvents();
+        Assert.Equal(2, active.Count);
+        Assert.Contains(active, e => e.ActorId == "Drake" && e.OutcomeId == drakeEvt.OutcomeId);
+        Assert.Contains(active, e => e.ActorId == "Elon" && e.OutcomeId == elonEvt.OutcomeId);
+
+        var drakeBook = marketService.GetOrderBook(drakeEvt.OutcomeId);
+        var elonBook = marketService.GetOrderBook(elonEvt.OutcomeId);
+        Assert.NotNull(drakeBook);
+        Assert.NotNull(elonBook);
+        Assert.Empty(drakeBook.Bids);
+        Assert.Empty(elonBook.Asks);
     }
 
     [Fact]

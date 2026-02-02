@@ -59,7 +59,7 @@ public static class EnterpriseTestSetup
     }
 
     /// <summary>
-    /// Market stack including the order book store (for tests that need to create DrakeOracleService with same store).
+    /// Market stack including the order book store (for tests that need to create CelebrityOracleService with same store).
     /// </summary>
     public static (
         IAccountRepository AccountRepo,
@@ -127,12 +127,12 @@ public static class EnterpriseTestSetup
     }
 
     /// <summary>
-    /// Drake stack: AccountRepo, LedgerService, Oracle, CopyTradingEngine, AutoSettlementAgent using EF and a fresh SQLite in-memory DB.
+    /// Drake/Celebrity stack: AccountRepo, LedgerService, Oracle, CopyTradingEngine, AutoSettlementAgent using EF and a fresh SQLite in-memory DB.
     /// </summary>
     public static (
         IAccountRepository AccountRepo,
         LedgerService LedgerService,
-        DrakeOracleService Oracle,
+        CelebrityOracleService Oracle,
         CopyTradingEngine CopyTradingEngine,
         AutoSettlementAgent AutoSettlementAgent) CreateDrakeStack()
     {
@@ -140,7 +140,7 @@ public static class EnterpriseTestSetup
         var provider = CreateServiceProvider(context);
         var scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
         var orderBookStore = new OrderBookStore();
-        var oracle = new DrakeOracleService(orderBookStore);
+        var oracle = new CelebrityOracleService(orderBookStore);
         var copyTradingEngine = new CopyTradingEngine(scopeFactory, oracle);
         var autoSettlementAgent = new AutoSettlementAgent(scopeFactory, copyTradingEngine);
 
@@ -151,14 +151,14 @@ public static class EnterpriseTestSetup
     }
 
     /// <summary>
-    /// Full stack: AccountRepo, LedgerService, CopyTradingService, MarketService, DrakeOracleService using EF and a fresh SQLite in-memory DB.
+    /// Full stack: AccountRepo, LedgerService, CopyTradingService, MarketService, CelebrityOracleService using EF and a fresh SQLite in-memory DB.
     /// </summary>
     public static (
         IAccountRepository AccountRepo,
         LedgerService LedgerService,
         CopyTradingService CopyTradingService,
         MarketService MarketService,
-        DrakeOracleService Oracle) CreateFullStack()
+        CelebrityOracleService Oracle) CreateFullStack()
     {
         var (accountRepo, ledgerService, copyTradingService, marketService, oracle, _) = CreateFullStackWithContext();
         return (accountRepo, ledgerService, copyTradingService, marketService, oracle);
@@ -172,7 +172,7 @@ public static class EnterpriseTestSetup
         LedgerService LedgerService,
         CopyTradingService CopyTradingService,
         MarketService MarketService,
-        DrakeOracleService Oracle,
+        CelebrityOracleService Oracle,
         ProjectExchangeDbContext Context) CreateFullStackWithContext()
     {
         var context = CreateFreshDbContext();
@@ -184,7 +184,7 @@ public static class EnterpriseTestSetup
         var orderBookStore = new OrderBookStore();
         var copyTradingService = new CopyTradingService();
         var marketService = new MarketService(orderBookStore, accountRepo, transactionRepo, context, copyTradingService, ledgerService);
-        var oracle = new DrakeOracleService(orderBookStore);
+        var oracle = new CelebrityOracleService(orderBookStore);
         return (accountRepo, ledgerService, copyTradingService, marketService, oracle, context);
     }
 }

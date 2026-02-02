@@ -27,17 +27,24 @@ public class AutoSettlementAgent
     }
 
     /// <summary>
-    /// Handles the outcome for Drake trades: finds all clearing transaction(s) for this outcome,
+    /// Handles the outcome for celebrity trades: finds all clearing transaction(s) for this outcome,
     /// posts Settlement-phase transactions (reverse entries) for any not yet settled. Idempotent.
+    /// Supports Agentic AI reporting: optional confidence score and source verification list.
     /// </summary>
     /// <param name="outcomeId">Outcome that was reached (e.g. "outcome-x").</param>
+    /// <param name="confidenceScore">Optional confidence score from the oracle/agent (e.g. 0.0–1.0).</param>
+    /// <param name="sourceVerificationList">Optional list of sources the agent used to verify the outcome.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Result with newly settled transaction IDs and any already-settled clearing IDs.</returns>
-    public async Task<SettlementResult> SettleOutcomeAsync(string outcomeId, CancellationToken cancellationToken = default)
+    /// <returns>Result with newly settled transaction IDs, any already-settled clearing IDs, and optional confidence/sources.</returns>
+    public async Task<SettlementResult> SettleOutcomeAsync(
+        string outcomeId,
+        decimal? confidenceScore = null,
+        IReadOnlyList<string>? sourceVerificationList = null,
+        CancellationToken cancellationToken = default)
     {
         var clearingTxIds = _copyTradingEngine.GetClearingTransactionIdsForOutcome(outcomeId);
         if (clearingTxIds.Count == 0)
-            return new SettlementResult(outcomeId, NewSettlementTransactionIds: [], AlreadySettledClearingIds: [], Message: "No clearing transactions found for this outcome. Call POST /api/drake/simulate with the same outcomeId first (matching is case-insensitive). If the app restarted, simulate again before outcome-reached.");
+            return new SettlementResult(outcomeId, NewSettlementTransactionIds: [], AlreadySettledClearingIds: [], Message: "No clearing transactions found for this outcome. Call POST /api/drake/simulate with the same outcomeId first (matching is case-insensitive). If the app restarted, simulate again before outcome-reached.", confidenceScore, sourceVerificationList ?? Array.Empty<string>());
 
         await using var scope = _scopeFactory.CreateAsyncScope();
         var ledgerService = scope.ServiceProvider.GetRequiredService<LedgerService>();
@@ -82,16 +89,24 @@ public class AutoSettlementAgent
             ? $"Settled {newSettlementIds.Count - alreadySettledClearingIds.Count} new; {alreadySettledClearingIds.Count} already settled."
             : "Auto-Settlement completed for all clearing transactions.";
 
-        return new SettlementResult(outcomeId, newSettlementIds, alreadySettledClearingIds, message);
+        return new SettlementResult(
+            outcomeId,
+            newSettlementIds,
+            alreadySettledClearingIds,
+            message,
+            confidenceScore,
+            sourceVerificationList ?? Array.Empty<string>());
     }
 
     /// <summary>Whether the given clearing transaction has already been settled.</summary>
     public bool IsSettled(Guid clearingTransactionId) => _settledClearingToSettlementTx.ContainsKey(clearingTransactionId);
 }
 
-/// <summary>Result of handling an outcome via the Auto-Settlement Agent.</summary>
+/// <summary>Result of handling an outcome via the Auto-Settlement Agent. Includes optional confidence and sources for Agentic AI.</summary>
 public record SettlementResult(
     string OutcomeId,
     IReadOnlyList<Guid> NewSettlementTransactionIds,
     IReadOnlyList<Guid> AlreadySettledClearingIds,
-    string Message);
+    string Message,
+    decimal? ConfidenceScore = null,
+    IReadOnlyList<string>? SourceVerificationList = null);

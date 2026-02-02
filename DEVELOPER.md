@@ -45,7 +45,7 @@ Persistence uses EF Core with PostgreSQL in production and SQLite in-memory for 
 ### Copy-Trading Engine
 
 - **CopyTradingService**: In-memory follow graph (Master → Followers). `Follow(followerId, masterId)` and `MirrorOrderAsync(masterOrder)` produce mirrored orders for all followers of the master.
-- **CopyTradingEngine**: Subscribes to `DrakeOracleService.TradeProposed`. When Drake (or a celebrity) “trades,” it resolves a scoped `LedgerService` and posts the trade to the ledger, and tracks clearing transaction IDs per outcome for the Auto-Settlement Agent.
+- **CopyTradingEngine**: Subscribes to `IOutcomeOracle.TradeProposed` (e.g. `CelebrityOracleService`). When a celebrity “trades,” it resolves a scoped `LedgerService` and posts the trade to the ledger (debit celebrity Main Operating Account per actor, credit Market Holding Account), and tracks clearing transaction IDs per outcome for the Auto-Settlement Agent.
 
 ---
 
@@ -53,13 +53,14 @@ Persistence uses EF Core with PostgreSQL in production and SQLite in-memory for 
 
 ### Outcome-as-an-Asset
 
-- **DrakeOracleService** creates market events (`CreateMarketEvent(title, type, durationMinutes)`). Each event gets a unique `OutcomeId`; the order book for that outcome is registered so users can trade “outcome-x” as an asset.
+- **IOutcomeOracle** (implemented by **CelebrityOracleService**) creates market events per actor: `CreateMarketEvent(actorId, title, type, durationMinutes)`. Each event gets a unique `OutcomeId` and tracks `ActorId` (e.g. "Drake", "Elon") and `ResponsibleOracleId` for settlement. The same oracle can host markets for multiple celebrities; the order book per outcome is registered so users can trade “outcome-x” as an asset.
 - **OutcomeRegistry** (optional): When provided, only registered outcomes accept orders. The Oracle registers the outcome when the market is opened; `MarketService` rejects orders for unknown outcomes with `InvalidOutcomeException`.
 
 ### Auto-Settlement Agent
 
 - **Role**: When an outcome is *reached* (e.g. event resolved), the agent settles related clearing trades by posting **Settlement-phase** transactions that reverse or close the clearing entries, referencing the original clearing transaction IDs.
 - **Idempotency**: Cleared transaction IDs are tracked; already-settled clearing transactions are skipped.
+- **Agentic AI readiness**: `SettleOutcomeAsync` accepts optional **ConfidenceScore** (e.g. 0.0–1.0) and **SourceVerificationList** (URLs or identifiers of sources used to verify the outcome). The API and `SettlementResult` echo these back so the system reports not just the result but how sure the agent is and which sources it used.
 - **Integration**: Uses `IServiceScopeFactory` to obtain scoped `LedgerService` and `ITransactionRepository` so that settlement runs in a proper unit-of-work and database context.
 
 ---
