@@ -4,7 +4,7 @@ using ProjectExchange.Accounting.Domain.Abstractions;
 namespace ProjectExchange.Core.Infrastructure.Persistence;
 
 /// <summary>
-/// EF Core DbContext for Project Exchange clearing & settlement data.
+/// EF Core DbContext for Project Exchange clearing and settlement data.
 /// Maps to domain: Account, Transaction, JournalEntry (Accounting ledger).
 /// </summary>
 public class ProjectExchangeDbContext : DbContext, IUnitOfWork

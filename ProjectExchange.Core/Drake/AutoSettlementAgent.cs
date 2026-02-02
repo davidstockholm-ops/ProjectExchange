@@ -44,7 +44,7 @@ public class AutoSettlementAgent
     {
         var clearingTxIds = _copyTradingEngine.GetClearingTransactionIdsForOutcome(outcomeId);
         if (clearingTxIds.Count == 0)
-            return new SettlementResult(outcomeId, NewSettlementTransactionIds: [], AlreadySettledClearingIds: [], Message: "No clearing transactions found for this outcome. Call POST /api/drake/simulate with the same outcomeId first (matching is case-insensitive). If the app restarted, simulate again before outcome-reached.", confidenceScore, sourceVerificationList ?? Array.Empty<string>());
+            return new SettlementResult(outcomeId, NewSettlementTransactionIds: [], AlreadySettledClearingIds: [], Message: "No clearing transactions found for this outcome. Call POST /api/celebrity/simulate with the same outcomeId first (matching is case-insensitive). If the app restarted, simulate again before outcome-reached.", confidenceScore, sourceVerificationList ?? Array.Empty<string>());
 
         await using var scope = _scopeFactory.CreateAsyncScope();
         var ledgerService = scope.ServiceProvider.GetRequiredService<LedgerService>();

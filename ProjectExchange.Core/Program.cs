@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
 using ProjectExchange.Accounting.Domain.Abstractions;
 using ProjectExchange.Accounting.Domain.Services;
 using ProjectExchange.Core.Drake;
@@ -10,7 +11,18 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Project Exchange API",
+        Version = "v1",
+        Description = "Clearing & Settlement platform: markets, order books (per outcome), celebrity copy-trading, and auto-settlement. Use **Active Events** to list tradeable markets; use **Order Book** to inspect bids/asks for an outcome."
+    });
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, "ProjectExchange.Core.xml");
+    if (File.Exists(xmlPath))
+        options.IncludeXmlComments(xmlPath);
+});
 builder.Services.AddControllers();
 
 // PostgreSQL + EF Core: DbContext and unit of work (scoped per request)
@@ -49,11 +61,12 @@ using (var scope = app.Services.CreateScope())
 // Market Holding accounts are created per outcome by CopyTradingEngine on first trade (Clearing & Settlement).
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Project Exchange API v1");
+    c.DocumentTitle = "Project Exchange — Swagger UI";
+});
 
 app.UseHttpsRedirection();
 

@@ -4,15 +4,16 @@ using ProjectExchange.Core.Markets;
 
 namespace ProjectExchange.Core.Controllers;
 
+/// <summary>Celebrity copy-trading and outcome settlement: simulate a celebrity trade, then mark outcome reached for auto-settlement.</summary>
 [ApiController]
-[Route("api/[controller]")]
-public class DrakeController : ControllerBase
+[Route("api/celebrity")]
+public class CelebrityController : ControllerBase
 {
     private readonly IOutcomeOracle _oracle;
     private readonly CopyTradingEngine _copyTradingEngine;
     private readonly AutoSettlementAgent _autoSettlementAgent;
 
-    public DrakeController(
+    public CelebrityController(
         IOutcomeOracle oracle,
         CopyTradingEngine copyTradingEngine,
         AutoSettlementAgent autoSettlementAgent)
@@ -23,27 +24,28 @@ public class DrakeController : ControllerBase
     }
 
     /// <summary>
-    /// Triggers the outcome oracle to simulate a celebrity trade (e.g. Drake or Elon betting on an outcome).
-    /// CopyTradingEngine subscribes and posts Clearing-phase debit (celebrity Main Operating Account)
-    /// and credit (Market Holding Account for that outcome). All transactions use Clearing for high-frequency traffic.
+    /// Simulate a celebrity trade (e.g. Drake or Elon betting on an outcome). Include ActorId in the body for multi-celebrity (e.g. "Elon").
+    /// CopyTradingEngine posts Clearing-phase entries; use outcome-reached after the event resolves to settle.
     /// </summary>
     [HttpPost("simulate")]
-    public async Task<IActionResult> Simulate([FromBody] SimulateTradeRequest request)
+    [ProducesResponseType(typeof(SimulateTradeResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Simulate([FromBody] SimulateTradeRequest body)
     {
-        if (request == null)
+        if (body == null)
             return BadRequest("Request body is required.");
-        if (request.Amount <= 0)
+        if (body.Amount <= 0)
             return BadRequest("Amount must be positive.");
-        if (string.IsNullOrWhiteSpace(request.OutcomeId))
+        if (string.IsNullOrWhiteSpace(body.OutcomeId))
             return BadRequest("OutcomeId is required.");
 
-        var operatorId = request.OperatorId != Guid.Empty ? request.OperatorId : DrakeConstants.MasterTraderId;
+        var operatorId = body.OperatorId != Guid.Empty ? body.OperatorId : DrakeConstants.MasterTraderId;
         var signal = _oracle.SimulateTrade(
             operatorId,
-            request.Amount,
-            request.OutcomeId.Trim(),
-            request.OutcomeName?.Trim() ?? "Outcome X",
-            request.ActorId?.Trim());
+            body.Amount,
+            body.OutcomeId.Trim(),
+            body.OutcomeName?.Trim() ?? "Outcome X",
+            body.ActorId?.Trim());
 
         // Ensure state is stored in the same CopyTradingEngine instance used by outcome-reached (singleton)
         var clearingTransactionId = _copyTradingEngine.GetLastClearingTransactionIdForOutcome(signal.OutcomeId);
@@ -65,23 +67,23 @@ public class DrakeController : ControllerBase
     }
 
     /// <summary>
-    /// Marks outcome as reached and triggers the Auto-Settlement Agent to handle celebrity trade outcomes:
-    /// posts Settlement-phase transactions for each clearing transaction tied to this outcome. Idempotent.
-    /// Supports Agentic AI: optional ConfidenceScore and SourceVerificationList report how sure the agent is and which sources it used.
+    /// Mark outcome as reached and trigger auto-settlement. Idempotent. Optional ConfidenceScore (0–1) and SourceVerificationList for Agentic AI.
     /// </summary>
     [HttpPost("outcome-reached")]
+    [ProducesResponseType(typeof(OutcomeReachedResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<OutcomeReachedResponse>> OutcomeReached(
-        [FromBody] OutcomeReachedRequest request,
+        [FromBody] OutcomeReachedRequest body,
         CancellationToken cancellationToken = default)
     {
-        if (request == null || string.IsNullOrWhiteSpace(request.OutcomeId))
+        if (body == null || string.IsNullOrWhiteSpace(body.OutcomeId))
             return BadRequest("OutcomeId is required.");
 
-        var outcomeId = request.OutcomeId!.Trim();
+        var outcomeId = body.OutcomeId!.Trim();
         var result = await _autoSettlementAgent.SettleOutcomeAsync(
             outcomeId,
-            request.ConfidenceScore,
-            request.SourceVerificationList,
+            body.ConfidenceScore,
+            body.SourceVerificationList,
             cancellationToken);
 
         return Ok(new OutcomeReachedResponse(
@@ -94,7 +96,14 @@ public class DrakeController : ControllerBase
     }
 }
 
+/// <summary>Request to simulate a celebrity trade. ActorId identifies the celebrity (e.g. Drake, Elon) for account naming.</summary>
+/// <param name="OperatorId">Operator (celebrity) account ID; use default (empty) for Master Trader.</param>
+/// <param name="Amount">Trade amount (must be positive).</param>
+/// <param name="OutcomeId">Outcome identifier (e.g. from Active Events).</param>
+/// <param name="OutcomeName">Display name for the outcome.</param>
+/// <param name="ActorId">Optional celebrity/actor ID (e.g. "Drake", "Elon"). Used for Main Operating Account naming; omit for default "Drake".</param>
 public record SimulateTradeRequest(Guid OperatorId, decimal Amount, string OutcomeId, string? OutcomeName = null, string? ActorId = null);
+
 public record SimulateTradeResponse(
     Guid TradeId,
     Guid OperatorId,
@@ -105,7 +114,12 @@ public record SimulateTradeResponse(
     Guid? ClearingTransactionId,
     string Phase);
 
+/// <summary>Request to mark an outcome as reached and trigger auto-settlement. Optional ConfidenceScore and SourceVerificationList for Agentic AI reporting.</summary>
+/// <param name="OutcomeId">Outcome that was reached (required).</param>
+/// <param name="ConfidenceScore">Optional confidence score from the agent (e.g. 0.0–1.0).</param>
+/// <param name="SourceVerificationList">Optional list of source URLs or identifiers the agent used to verify the outcome.</param>
 public record OutcomeReachedRequest(string? OutcomeId, decimal? ConfidenceScore = null, IReadOnlyList<string>? SourceVerificationList = null);
+
 public record OutcomeReachedResponse(
     string OutcomeId,
     IReadOnlyList<Guid> SettlementTransactionIds,

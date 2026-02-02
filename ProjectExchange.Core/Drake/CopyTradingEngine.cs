@@ -120,7 +120,7 @@ public class CopyTradingEngine
         return clearingTransactionId;
     }
 
-    /// <summary>Get or create a Market Holding Account representing the specific outcome (Clearing & Settlement).</summary>
+    /// <summary>Get or create a Market Holding Account representing the specific outcome (Clearing and Settlement).</summary>
     private async Task<Account> GetOrCreateMarketHoldingAccountForOutcomeAsync(string outcomeId, string outcomeName, IAccountRepository accountRepository, CancellationToken cancellationToken)
     {
         var semaphore = _outcomeSemaphores.GetOrAdd(outcomeId, _ => new SemaphoreSlim(1, 1));
