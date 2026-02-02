@@ -17,7 +17,7 @@ builder.Services.AddSwaggerGen(options =>
     {
         Title = "Project Exchange API",
         Version = "v1",
-        Description = "Clearing & Settlement. **Market** (api/markets): base/create, flash/create, celebrity/create, celebrity/simulate, outcome-reached, active, orderbook. **Wallet** (api/wallet): create account."
+        Description = "Clearing & Settlement. **Market** (api/markets): base/create, flash/create, celebrity/create, celebrity/simulate, outcome-reached, active, orderbook. **Secondary** (api/secondary): order, book/{marketId}. **Wallet** (api/wallet): create account."
     });
     var xmlPath = Path.Combine(AppContext.BaseDirectory, "ProjectExchange.Core.xml");
     if (File.Exists(xmlPath))
@@ -40,6 +40,7 @@ builder.Services.AddScoped<LedgerService>();
 
 // Shared order books (singleton) and matching engine (scoped)
 builder.Services.AddSingleton<IOrderBookStore, OrderBookStore>();
+builder.Services.AddScoped<IMatchingEngine, MockMatchingEngine>();
 builder.Services.AddScoped<MarketService>();
 
 // Social copy-trading: follow graph (singleton)

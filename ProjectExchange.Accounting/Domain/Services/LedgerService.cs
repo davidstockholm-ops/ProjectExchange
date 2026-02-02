@@ -41,7 +41,7 @@ public class LedgerService
     /// Optional filter by settlement phase (e.g. only Clearing to see internal debt).
     /// </summary>
     public async Task<IReadOnlyDictionary<Guid, decimal>> GetOperatorBalancesAsync(
-        Guid operatorId,
+        string operatorId,
         SettlementPhase? phase = null,
         CancellationToken cancellationToken = default)
     {
@@ -60,7 +60,7 @@ public class LedgerService
     /// Useful for "net position" in a given phase (Clearing vs Settlement).
     /// </summary>
     public async Task<decimal> GetOperatorNetBalanceAsync(
-        Guid operatorId,
+        string operatorId,
         SettlementPhase? phase = null,
         CancellationToken cancellationToken = default)
     {

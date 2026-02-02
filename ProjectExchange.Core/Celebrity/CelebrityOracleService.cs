@@ -55,8 +55,10 @@ public class CelebrityOracleService : BaseOracleService, IOutcomeOracle
     /// <summary>
     /// Simulates a celebrity placing a bet on an outcome. Raises TradeProposed (Clearing-phase flow).
     /// </summary>
-    public CelebrityTradeSignal SimulateTrade(Guid operatorId, decimal amount, string outcomeId, string outcomeName = "Outcome X", string? actorId = null)
+    public CelebrityTradeSignal SimulateTrade(string operatorId, decimal amount, string outcomeId, string outcomeName = "Outcome X", string? actorId = null)
     {
+        if (string.IsNullOrWhiteSpace(operatorId))
+            throw new ArgumentException("OperatorId is required.", nameof(operatorId));
         if (amount <= 0)
             throw new ArgumentOutOfRangeException(nameof(amount), "Amount must be positive.");
         if (string.IsNullOrWhiteSpace(outcomeId))
@@ -64,7 +66,7 @@ public class CelebrityOracleService : BaseOracleService, IOutcomeOracle
 
         var signal = new CelebrityTradeSignal(
             TradeId: Guid.NewGuid(),
-            OperatorId: operatorId,
+            OperatorId: operatorId.Trim(),
             Amount: amount,
             OutcomeId: outcomeId,
             OutcomeName: string.IsNullOrWhiteSpace(outcomeName) ? "Outcome X" : outcomeName,

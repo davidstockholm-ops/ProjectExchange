@@ -8,10 +8,10 @@ namespace ProjectExchange.Tests;
 public class OrderBookTests
 {
     private static Order NewBid(Guid? id, Guid? userId, decimal price, decimal quantity) =>
-        new(id ?? Guid.NewGuid(), userId ?? Guid.NewGuid(), "outcome-x", OrderType.Bid, price, quantity);
+        new(id ?? Guid.NewGuid(), (userId ?? Guid.NewGuid()).ToString(), "outcome-x", OrderType.Bid, price, quantity);
 
     private static Order NewAsk(Guid? id, Guid? userId, decimal price, decimal quantity) =>
-        new(id ?? Guid.NewGuid(), userId ?? Guid.NewGuid(), "outcome-x", OrderType.Ask, price, quantity);
+        new(id ?? Guid.NewGuid(), (userId ?? Guid.NewGuid()).ToString(), "outcome-x", OrderType.Ask, price, quantity);
 
     [Fact]
     public void BasicMatch_Bid060_Ask050_MatchesAt050()
@@ -28,8 +28,8 @@ public class OrderBookTests
         var m = results[0];
         Assert.Equal(0.50m, m.Price);
         Assert.Equal(10m, m.Quantity);
-        Assert.Equal(buyerId, m.BuyerUserId);
-        Assert.Equal(sellerId, m.SellerUserId);
+        Assert.Equal(buyerId.ToString(), m.BuyerUserId);
+        Assert.Equal(sellerId.ToString(), m.SellerUserId);
         Assert.Empty(book.Bids);
         Assert.Empty(book.Asks);
     }
@@ -66,8 +66,8 @@ public class OrderBookTests
         Assert.Single(results);
         Assert.Equal(0.50m, results[0].Price);
         Assert.Equal(40m, results[0].Quantity);
-        Assert.Equal(buyerId, results[0].BuyerUserId);
-        Assert.Equal(sellerId, results[0].SellerUserId);
+        Assert.Equal(buyerId.ToString(), results[0].BuyerUserId);
+        Assert.Equal(sellerId.ToString(), results[0].SellerUserId);
         Assert.Single(book.Bids);
         Assert.Equal(60m, book.Bids[0].Quantity);
         Assert.Empty(book.Asks);
@@ -90,8 +90,8 @@ public class OrderBookTests
 
         Assert.Single(results);
         Assert.Equal(0.50m, results[0].Price);
-        Assert.Equal(sellerLowId, results[0].SellerUserId);
-        Assert.Equal(buyerId, results[0].BuyerUserId);
+        Assert.Equal(sellerLowId.ToString(), results[0].SellerUserId);
+        Assert.Equal(buyerId.ToString(), results[0].BuyerUserId);
         Assert.Empty(book.Bids);
         Assert.Equal(2, book.Asks.Count);
         Assert.Equal(0.60m, book.Asks[0].Price);
@@ -116,14 +116,14 @@ public class OrderBookTests
         Assert.Equal(3, results.Count);
         Assert.Equal(0.50m, results[0].Price);
         Assert.Equal(10m, results[0].Quantity);
-        Assert.Equal(sellerLowId, results[0].SellerUserId);
+        Assert.Equal(sellerLowId.ToString(), results[0].SellerUserId);
         Assert.Equal(0.60m, results[1].Price);
         Assert.Equal(10m, results[1].Quantity);
-        Assert.Equal(sellerMidId, results[1].SellerUserId);
+        Assert.Equal(sellerMidId.ToString(), results[1].SellerUserId);
         Assert.Equal(0.70m, results[2].Price);
         Assert.Equal(10m, results[2].Quantity);
-        Assert.Equal(sellerHighId, results[2].SellerUserId);
-        Assert.All(results, r => Assert.Equal(buyerId, r.BuyerUserId));
+        Assert.Equal(sellerHighId.ToString(), results[2].SellerUserId);
+        Assert.All(results, r => Assert.Equal(buyerId.ToString(), r.BuyerUserId));
         Assert.Empty(book.Bids);
         Assert.Empty(book.Asks);
     }

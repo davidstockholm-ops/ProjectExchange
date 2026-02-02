@@ -14,7 +14,7 @@ public class InMemoryAccountRepository : IAccountRepository
         return Task.FromResult(account);
     }
 
-    public Task<IReadOnlyList<Account>> GetByOperatorIdAsync(Guid operatorId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<Account>> GetByOperatorIdAsync(string operatorId, CancellationToken cancellationToken = default)
     {
         var list = _accounts.Where(a => a.OperatorId == operatorId).ToList().AsReadOnly();
         return Task.FromResult<IReadOnlyList<Account>>(list);

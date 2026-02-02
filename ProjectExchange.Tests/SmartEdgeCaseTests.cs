@@ -23,7 +23,7 @@ public class SmartEdgeCaseTests
     {
         var userId = Guid.NewGuid();
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            new Order(Guid.NewGuid(), userId, "outcome-x", OrderType.Bid, 0.50m, 0m));
+            new Order(Guid.NewGuid(), userId.ToString(), "outcome-x", OrderType.Bid, 0.50m, 0m));
     }
 
     [Fact]
@@ -31,7 +31,7 @@ public class SmartEdgeCaseTests
     {
         var userId = Guid.NewGuid();
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            new Order(Guid.NewGuid(), userId, "outcome-x", OrderType.Bid, 0.50m, -10m));
+            new Order(Guid.NewGuid(), userId.ToString(), "outcome-x", OrderType.Bid, 0.50m, -10m));
     }
 
     [Fact]
@@ -39,7 +39,7 @@ public class SmartEdgeCaseTests
     {
         var userId = Guid.NewGuid();
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            new Order(Guid.NewGuid(), userId, "outcome-x", OrderType.Bid, 1.01m, 10m));
+            new Order(Guid.NewGuid(), userId.ToString(), "outcome-x", OrderType.Bid, 1.01m, 10m));
     }
 
     [Fact]
@@ -47,17 +47,17 @@ public class SmartEdgeCaseTests
     {
         var userId = Guid.NewGuid();
         Assert.Throws<ArgumentException>(() =>
-            new Order(Guid.NewGuid(), userId, "", OrderType.Bid, 0.50m, 10m));
+            new Order(Guid.NewGuid(), userId.ToString(), "", OrderType.Bid, 0.50m, 10m));
         Assert.Throws<ArgumentException>(() =>
-            new Order(Guid.NewGuid(), userId, "   ", OrderType.Bid, 0.50m, 10m));
+            new Order(Guid.NewGuid(), userId.ToString(), "   ", OrderType.Bid, 0.50m, 10m));
     }
 
     [Fact]
     public void Order_PriceAtBoundary_ZeroAndOne_Accepted()
     {
         var userId = Guid.NewGuid();
-        var order0 = new Order(Guid.NewGuid(), userId, "outcome-x", OrderType.Bid, 0.00m, 1m);
-        var order1 = new Order(Guid.NewGuid(), userId, "outcome-x", OrderType.Ask, 1.00m, 1m);
+        var order0 = new Order(Guid.NewGuid(), userId.ToString(), "outcome-x", OrderType.Bid, 0.00m, 1m);
+        var order1 = new Order(Guid.NewGuid(), userId.ToString(), "outcome-x", OrderType.Ask, 1.00m, 1m);
         Assert.Equal(0.00m, order0.Price);
         Assert.Equal(1.00m, order1.Price);
     }
@@ -82,7 +82,7 @@ public class SmartEdgeCaseTests
         var oracle = new CelebrityOracleService(orderBookStore, new ServiceCollection().BuildServiceProvider());
         var operatorId = Guid.NewGuid();
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            oracle.SimulateTrade(operatorId, 0m, "outcome-x"));
+            oracle.SimulateTrade(operatorId.ToString(), 0m, "outcome-x"));
     }
 
     [Fact]
@@ -92,7 +92,7 @@ public class SmartEdgeCaseTests
         var oracle = new CelebrityOracleService(orderBookStore, new ServiceCollection().BuildServiceProvider());
         var operatorId = Guid.NewGuid();
         Assert.Throws<ArgumentException>(() =>
-            oracle.SimulateTrade(operatorId, 100m, ""));
+            oracle.SimulateTrade(operatorId.ToString(), 100m, ""));
     }
 
     // ----- Copy-trading: Unfollow then place order -----
@@ -108,20 +108,20 @@ public class SmartEdgeCaseTests
         var lpId = Guid.NewGuid();
         var sinkId = Guid.NewGuid();
 
-        var masterAccount = new Account(Guid.NewGuid(), "Master", AccountType.Asset, masterId);
-        var fanAAccount = new Account(Guid.NewGuid(), "FanA", AccountType.Asset, followerA);
-        var fanBAccount = new Account(Guid.NewGuid(), "FanB", AccountType.Asset, followerB);
-        var lpAccount = new Account(Guid.NewGuid(), "LP", AccountType.Asset, lpId);
-        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId);
+        var masterAccount = new Account(Guid.NewGuid(), "Master", AccountType.Asset, masterId.ToString());
+        var fanAAccount = new Account(Guid.NewGuid(), "FanA", AccountType.Asset, followerA.ToString());
+        var fanBAccount = new Account(Guid.NewGuid(), "FanB", AccountType.Asset, followerB.ToString());
+        var lpAccount = new Account(Guid.NewGuid(), "LP", AccountType.Asset, lpId.ToString());
+        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId.ToString());
         await accountRepo.CreateAsync(masterAccount);
         await accountRepo.CreateAsync(fanAAccount);
         await accountRepo.CreateAsync(fanBAccount);
         await accountRepo.CreateAsync(lpAccount);
         await accountRepo.CreateAsync(sinkAccount);
 
-        copyTradingService.Follow(followerA, masterId);
-        copyTradingService.Follow(followerB, masterId);
-        copyTradingService.Unfollow(followerA, masterId);
+        copyTradingService.Follow(followerA.ToString(), masterId.ToString());
+        copyTradingService.Follow(followerB.ToString(), masterId.ToString());
+        copyTradingService.Unfollow(followerA.ToString(), masterId.ToString());
 
         var evt = oracle.CreateMarketEvent("Drake", "Unfollow Test", "Flash", 5);
         var outcomeId = evt.OutcomeId;
@@ -133,9 +133,9 @@ public class SmartEdgeCaseTests
             new(sinkAccount.Id, 90m, EntryType.Credit, SettlementPhase.Clearing)
         });
 
-        var lpAsk = new Order(Guid.NewGuid(), lpId, outcomeId, OrderType.Ask, 0.50m, 200m);
+        var lpAsk = new Order(Guid.NewGuid(), lpId.ToString(), outcomeId, OrderType.Ask, 0.50m, 200m);
         await marketService.PlaceOrderAsync(lpAsk);
-        var masterBid = new Order(Guid.NewGuid(), masterId, outcomeId, OrderType.Bid, 0.50m, 50m);
+        var masterBid = new Order(Guid.NewGuid(), masterId.ToString(), outcomeId, OrderType.Bid, 0.50m, 50m);
         var result = await marketService.PlaceOrderAsync(masterBid);
 
         Assert.True(result.MatchCount >= 1);
@@ -161,8 +161,8 @@ public class SmartEdgeCaseTests
 
         var buyerId = Guid.NewGuid();
         var sellerId = Guid.NewGuid();
-        var buyerAccount = new Account(Guid.NewGuid(), "Buyer", AccountType.Asset, buyerId);
-        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, Guid.NewGuid());
+        var buyerAccount = new Account(Guid.NewGuid(), "Buyer", AccountType.Asset, buyerId.ToString());
+        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, Guid.NewGuid().ToString());
         await accountRepo.CreateAsync(buyerAccount);
         await accountRepo.CreateAsync(sinkAccount);
 
@@ -174,10 +174,10 @@ public class SmartEdgeCaseTests
             new(sinkAccount.Id, amount, EntryType.Credit, SettlementPhase.Clearing)
         });
 
-        var ask = new Order(Guid.NewGuid(), sellerId, outcomeId, OrderType.Ask, 0.50m, 20m);
+        var ask = new Order(Guid.NewGuid(), sellerId.ToString(), outcomeId, OrderType.Ask, 0.50m, 20m);
         await marketService.PlaceOrderAsync(ask);
 
-        var bid = new Order(Guid.NewGuid(), buyerId, outcomeId, OrderType.Bid, 0.60m, 20m);
+        var bid = new Order(Guid.NewGuid(), buyerId.ToString(), outcomeId, OrderType.Bid, 0.60m, 20m);
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => marketService.PlaceOrderAsync(bid));
         Assert.Contains("Seller", ex.Message);
         Assert.Contains(sellerId.ToString(), ex.Message);
@@ -200,7 +200,7 @@ public class SmartEdgeCaseTests
     {
         var (accountRepo, _, ledgerService) = EnterpriseTestSetup.CreateLedger();
         var operatorId = Guid.NewGuid();
-        var account = new Account(Guid.NewGuid(), "Empty", AccountType.Asset, operatorId);
+        var account = new Account(Guid.NewGuid(), "Empty", AccountType.Asset, operatorId.ToString());
         await accountRepo.CreateAsync(account);
         var balance = await ledgerService.GetAccountBalanceAsync(account.Id, null);
         Assert.Equal(0m, balance);
@@ -227,12 +227,12 @@ public class SmartEdgeCaseTests
         var (accountRepo, ledgerService, oracle, copyTradingEngine, autoSettlementAgent) = EnterpriseTestSetup.CreateCelebrityStack();
         var operatorId = Guid.NewGuid();
         var mainAccountName = CelebrityConstants.GetMainOperatingAccountName("Drake");
-        var account = new Account(Guid.NewGuid(), mainAccountName, AccountType.Asset, operatorId);
+        var account = new Account(Guid.NewGuid(), mainAccountName, AccountType.Asset, operatorId.ToString());
         await accountRepo.CreateAsync(account);
 
         var evt = oracle.CreateMarketEvent("Drake", "Idempotent Outcome", "Flash", 5);
         var outcomeId = evt.OutcomeId;
-        var signal = new CelebrityTradeSignal(Guid.NewGuid(), operatorId, 50m, outcomeId, "Idempotent", "Drake");
+        var signal = new CelebrityTradeSignal(Guid.NewGuid(), operatorId.ToString(), 50m, outcomeId, "Idempotent", "Drake");
         await copyTradingEngine.ExecuteCopyTradeAsync(signal);
 
         var first = await autoSettlementAgent.SettleOutcomeAsync(outcomeId);
@@ -251,12 +251,12 @@ public class SmartEdgeCaseTests
     {
         var (accountRepo, _, _, copyTradingEngine, _) = EnterpriseTestSetup.CreateCelebrityStack();
         var operatorId = Guid.NewGuid();
-        var account = new Account(Guid.NewGuid(), "Wrong Name Only", AccountType.Asset, operatorId);
+        var account = new Account(Guid.NewGuid(), "Wrong Name Only", AccountType.Asset, operatorId.ToString());
         await accountRepo.CreateAsync(account);
 
         var signal = new CelebrityTradeSignal(
             Guid.NewGuid(),
-            operatorId,
+            operatorId.ToString(),
             100m,
             "outcome-missing-main",
             "Outcome",

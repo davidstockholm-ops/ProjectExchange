@@ -25,7 +25,7 @@ public class EfAccountRepository : IAccountRepository
         return entity == null ? null : ToDomain(entity);
     }
 
-    public async Task<IReadOnlyList<Account>> GetByOperatorIdAsync(Guid operatorId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Account>> GetByOperatorIdAsync(string operatorId, CancellationToken cancellationToken = default)
     {
         var list = await _context.Accounts
             .AsNoTracking()

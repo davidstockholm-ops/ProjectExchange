@@ -8,8 +8,8 @@ namespace ProjectExchange.Core.Social;
 /// </summary>
 public class CopyTradingService
 {
-    /// <summary>Master ID -> set of follower IDs.</summary>
-    private readonly ConcurrentDictionary<Guid, HashSet<Guid>> _followersByMaster = new();
+    /// <summary>Master ID -> set of follower IDs (string IDs for flexible names e.g. "david", "apple-pay").</summary>
+    private readonly ConcurrentDictionary<string, HashSet<string>> _followersByMaster = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Fixed quantity for mirrored orders when not scaling (e.g. 10 units).</summary>
     private const decimal DefaultMirroredQuantity = 10m;
@@ -17,26 +17,28 @@ public class CopyTradingService
     /// <summary>
     /// Registers followerId as following masterId (master becomes a "Master Trader" for copy-trading).
     /// </summary>
-    public void Follow(Guid followerId, Guid masterId)
+    public void Follow(string followerId, string masterId)
     {
-        if (followerId == masterId)
+        if (string.IsNullOrWhiteSpace(followerId) || string.IsNullOrWhiteSpace(masterId) || string.Equals(followerId, masterId, StringComparison.OrdinalIgnoreCase))
             return;
-        var set = _followersByMaster.GetOrAdd(masterId, _ => new HashSet<Guid>());
-        lock (set) { set.Add(followerId); }
+        var set = _followersByMaster.GetOrAdd(masterId.Trim(), _ => new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+        lock (set) { set.Add(followerId.Trim()); }
     }
 
     /// <summary>Unfollows (optional; not in spec but useful).</summary>
-    public void Unfollow(Guid followerId, Guid masterId)
+    public void Unfollow(string followerId, string masterId)
     {
-        if (_followersByMaster.TryGetValue(masterId, out var set))
-            lock (set) { set.Remove(followerId); }
+        if (string.IsNullOrWhiteSpace(masterId)) return;
+        if (_followersByMaster.TryGetValue(masterId.Trim(), out var set))
+            lock (set) { set.Remove(followerId?.Trim() ?? string.Empty); }
     }
 
     /// <summary>Returns follower IDs for a master. Empty if not a master.</summary>
-    public IReadOnlyList<Guid> GetFollowers(Guid masterId)
+    public IReadOnlyList<string> GetFollowers(string masterId)
     {
-        if (!_followersByMaster.TryGetValue(masterId, out var set))
-            return Array.Empty<Guid>();
+        if (string.IsNullOrWhiteSpace(masterId)) return Array.Empty<string>();
+        if (!_followersByMaster.TryGetValue(masterId.Trim(), out var set))
+            return Array.Empty<string>();
         lock (set) { return set.ToList(); }
     }
 
@@ -66,7 +68,8 @@ public class CopyTradingService
                 masterOrder.OutcomeId,
                 masterOrder.Type,
                 masterOrder.Price,
-                quantity);
+                quantity,
+                masterOrder.OperatorId);
             list.Add(order);
         }
         return Task.FromResult<IReadOnlyList<Order>>(list);

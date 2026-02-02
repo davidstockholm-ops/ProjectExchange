@@ -27,7 +27,7 @@ public class EfTransactionRepository : ITransactionRepository
         return entity == null ? null : ToDomain(entity);
     }
 
-    public async Task<IReadOnlyList<Transaction>> GetByOperatorIdAsync(Guid operatorId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Transaction>> GetByOperatorIdAsync(string operatorId, CancellationToken cancellationToken = default)
     {
         var accountIds = await _context.Accounts
             .Where(a => a.OperatorId == operatorId)

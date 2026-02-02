@@ -23,8 +23,8 @@ public class LedgerTests
         var (accountRepo, _, ledgerService) = CreateLedger();
 
         var operatorId = Guid.NewGuid();
-        var accountA = new Account(Guid.NewGuid(), "Account A", AccountType.Asset, operatorId);
-        var accountB = new Account(Guid.NewGuid(), "Account B", AccountType.Asset, operatorId);
+        var accountA = new Account(Guid.NewGuid(), "Account A", AccountType.Asset, operatorId.ToString());
+        var accountB = new Account(Guid.NewGuid(), "Account B", AccountType.Asset, operatorId.ToString());
         await accountRepo.CreateAsync(accountA);
         await accountRepo.CreateAsync(accountB);
 
@@ -54,7 +54,7 @@ public class LedgerTests
         var (accountRepo, _, ledgerService) = CreateLedger();
 
         var operatorId = Guid.NewGuid();
-        var accountA = new Account(Guid.NewGuid(), "Account A", AccountType.Asset, operatorId);
+        var accountA = new Account(Guid.NewGuid(), "Account A", AccountType.Asset, operatorId.ToString());
         await accountRepo.CreateAsync(accountA);
 
         var entries = new List<JournalEntry>
@@ -75,8 +75,8 @@ public class LedgerTests
         var (accountRepo, _, ledgerService) = CreateLedger();
 
         var operatorId = Guid.NewGuid();
-        var accountA = new Account(Guid.NewGuid(), "Account A", AccountType.Asset, operatorId);
-        var accountB = new Account(Guid.NewGuid(), "Account B", AccountType.Asset, operatorId);
+        var accountA = new Account(Guid.NewGuid(), "Account A", AccountType.Asset, operatorId.ToString());
+        var accountB = new Account(Guid.NewGuid(), "Account B", AccountType.Asset, operatorId.ToString());
         await accountRepo.CreateAsync(accountA);
         await accountRepo.CreateAsync(accountB);
 
@@ -101,8 +101,8 @@ public class LedgerTests
         var (accountRepo, _, ledgerService) = CreateLedger();
 
         var operatorId = Guid.NewGuid();
-        var accountA = new Account(Guid.NewGuid(), "Account A", AccountType.Asset, operatorId);
-        var accountB = new Account(Guid.NewGuid(), "Account B", AccountType.Asset, operatorId);
+        var accountA = new Account(Guid.NewGuid(), "Account A", AccountType.Asset, operatorId.ToString());
+        var accountB = new Account(Guid.NewGuid(), "Account B", AccountType.Asset, operatorId.ToString());
         await accountRepo.CreateAsync(accountA);
         await accountRepo.CreateAsync(accountB);
 
@@ -142,8 +142,8 @@ public class LedgerTests
         var (accountRepo, _, ledgerService) = CreateLedger();
 
         var operatorId = Guid.NewGuid();
-        var accountA = new Account(Guid.NewGuid(), "Account A", AccountType.Asset, operatorId);
-        var accountB = new Account(Guid.NewGuid(), "Account B", AccountType.Asset, operatorId);
+        var accountA = new Account(Guid.NewGuid(), "Account A", AccountType.Asset, operatorId.ToString());
+        var accountB = new Account(Guid.NewGuid(), "Account B", AccountType.Asset, operatorId.ToString());
         await accountRepo.CreateAsync(accountA);
         await accountRepo.CreateAsync(accountB);
 

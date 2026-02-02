@@ -28,8 +28,9 @@ namespace ProjectExchange.Core.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
-                    b.Property<Guid>("OperatorId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("OperatorId")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
 
                     b.Property<int>("Type")
                         .HasColumnType("integer");

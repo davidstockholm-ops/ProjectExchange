@@ -11,7 +11,7 @@ namespace ProjectExchange.Core.Markets;
 /// <param name="ActorId">Optional actor/celebrity ID (e.g. "Drake", "Elon") for account naming and display.</param>
 public record CelebrityTradeSignal(
     Guid TradeId,
-    Guid OperatorId,
+    string OperatorId,
     decimal Amount,
     string OutcomeId,
     string OutcomeName,

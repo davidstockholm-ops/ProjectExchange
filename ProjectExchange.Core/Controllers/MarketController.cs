@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using ProjectExchange.Accounting.Domain.Abstractions;
@@ -137,14 +135,14 @@ public class MarketController : ControllerBase
         if (string.IsNullOrWhiteSpace(body.OutcomeId))
             return BadRequest("OutcomeId is required.");
 
-        var operatorGuid = ResolveOperatorId(body.OperatorId);
+        var operatorId = string.IsNullOrWhiteSpace(body.OperatorId) ? CelebrityConstants.MasterTraderId : body.OperatorId.Trim();
         var actorId = body.ActorId?.Trim();
         var actorWalletName = CelebrityConstants.GetMainOperatingAccountName(actorId);
 
-        await EnsureActorWalletExistsAsync(operatorGuid, actorId, actorWalletName, cancellationToken);
+        await EnsureActorWalletExistsAsync(operatorId, actorId, actorWalletName, cancellationToken);
 
         var signal = _oracle.SimulateTrade(
-            operatorGuid,
+            operatorId,
             body.Amount,
             body.OutcomeId.Trim(),
             body.OutcomeName?.Trim() ?? "Outcome X",
@@ -235,26 +233,14 @@ public class MarketController : ControllerBase
 
     // ----- Helpers (celebrity simulate) -----
 
-    private static Guid ResolveOperatorId(string? operatorId)
+    private async Task EnsureActorWalletExistsAsync(string operatorId, string? actorId, string actorWalletName, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(operatorId))
-            return CelebrityConstants.MasterTraderId;
-        if (Guid.TryParse(operatorId.Trim(), out var parsed))
-            return parsed;
-        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(operatorId.Trim()));
-        var bytes = new byte[16];
-        Array.Copy(hash, 0, bytes, 0, 16);
-        return new Guid(bytes);
-    }
-
-    private async Task EnsureActorWalletExistsAsync(Guid operatorGuid, string? actorId, string actorWalletName, CancellationToken cancellationToken)
-    {
-        var accounts = await _accountRepository.GetByOperatorIdAsync(operatorGuid, cancellationToken);
+        var accounts = await _accountRepository.GetByOperatorIdAsync(operatorId, cancellationToken);
         if (accounts.Any(a => string.Equals(a.Name, actorWalletName, StringComparison.Ordinal)))
             return;
 
         var celebrityAccountId = Guid.NewGuid();
-        var celebrityAccount = new Account(celebrityAccountId, actorWalletName, AccountType.Asset, operatorGuid);
+        var celebrityAccount = new Account(celebrityAccountId, actorWalletName, AccountType.Asset, operatorId);
         await _accountRepository.CreateAsync(celebrityAccount, cancellationToken);
 
         if (_env.IsDevelopment())
@@ -295,11 +281,11 @@ public record CreateCelebrityMarketRequest(string? ActorId, string? Title, strin
 public record CreateCelebrityMarketResponse(Guid Id, string Title, string Type, string OutcomeId, string ActorId, string ResponsibleOracleId, int DurationMinutes, DateTimeOffset CreatedAt, DateTimeOffset ExpiresAt);
 
 public record SimulateTradeRequest(string? OperatorId, decimal Amount, string OutcomeId, string? OutcomeName = null, string? ActorId = null);
-public record SimulateTradeResponse(Guid TradeId, Guid OperatorId, decimal Amount, string OutcomeId, string OutcomeName, string? ActorId, Guid? ClearingTransactionId, string Phase);
+public record SimulateTradeResponse(Guid TradeId, string OperatorId, decimal Amount, string OutcomeId, string OutcomeName, string? ActorId, Guid? ClearingTransactionId, string Phase);
 
 public record OutcomeReachedRequest(string? OutcomeId, decimal? ConfidenceScore = null, IReadOnlyList<string>? SourceVerificationList = null);
 public record OutcomeReachedResponse(string OutcomeId, IReadOnlyList<Guid> SettlementTransactionIds, IReadOnlyList<Guid> AlreadySettledClearingIds, string Message, decimal? ConfidenceScore = null, IReadOnlyList<string>? SourceVerificationList = null);
 
 public record ActiveMarketResponse(Guid Id, string Title, string Type, string OutcomeId, string ActorId, string ResponsibleOracleId, int DurationMinutes, DateTimeOffset CreatedAt, DateTimeOffset ExpiresAt);
 public record OrderBookResponse(string OutcomeId, IReadOnlyList<OrderBookLevel> Bids, IReadOnlyList<OrderBookLevel> Asks);
-public record OrderBookLevel(Guid OrderId, Guid UserId, decimal Price, decimal Quantity);
+public record OrderBookLevel(Guid OrderId, string UserId, decimal Price, decimal Quantity);

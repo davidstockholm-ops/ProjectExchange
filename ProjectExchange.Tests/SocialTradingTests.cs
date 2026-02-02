@@ -29,18 +29,18 @@ public class SocialTradingTests
         var follower1Id = Guid.NewGuid();
         var follower2Id = Guid.NewGuid();
 
-        var celebrityAccount = new Account(Guid.NewGuid(), "Drake", AccountType.Asset, celebrityId);
-        var f1Account = new Account(Guid.NewGuid(), "Follower1", AccountType.Asset, follower1Id);
-        var f2Account = new Account(Guid.NewGuid(), "Follower2", AccountType.Asset, follower2Id);
+        var celebrityAccount = new Account(Guid.NewGuid(), "Drake", AccountType.Asset, celebrityId.ToString());
+        var f1Account = new Account(Guid.NewGuid(), "Follower1", AccountType.Asset, follower1Id.ToString());
+        var f2Account = new Account(Guid.NewGuid(), "Follower2", AccountType.Asset, follower2Id.ToString());
         await accountRepo.CreateAsync(celebrityAccount);
         await accountRepo.CreateAsync(f1Account);
         await accountRepo.CreateAsync(f2Account);
 
-        copyTradingService.Follow(follower1Id, celebrityId);
-        copyTradingService.Follow(follower2Id, celebrityId);
+        copyTradingService.Follow(follower1Id.ToString(), celebrityId.ToString());
+        copyTradingService.Follow(follower2Id.ToString(), celebrityId.ToString());
 
         const string outcomeId = "outcome-social";
-        var celebrityOrder = new Order(Guid.NewGuid(), celebrityId, outcomeId, OrderType.Bid, 0.60m, 50m);
+        var celebrityOrder = new Order(Guid.NewGuid(), celebrityId.ToString(), outcomeId, OrderType.Bid, 0.60m, 50m);
         await marketService.PlaceOrderAsync(celebrityOrder);
 
         var book = marketService.GetOrderBook(outcomeId);
@@ -59,12 +59,12 @@ public class SocialTradingTests
         var follower1Id = Guid.NewGuid();
         var follower2Id = Guid.NewGuid();
 
-        var sellerAccount = new Account(Guid.NewGuid(), "Seller", AccountType.Asset, sellerId);
-        var celebrityAccount = new Account(Guid.NewGuid(), "Drake", AccountType.Asset, celebrityId);
-        var f1Account = new Account(Guid.NewGuid(), "Follower1", AccountType.Asset, follower1Id);
-        var f2Account = new Account(Guid.NewGuid(), "Follower2", AccountType.Asset, follower2Id);
+        var sellerAccount = new Account(Guid.NewGuid(), "Seller", AccountType.Asset, sellerId.ToString());
+        var celebrityAccount = new Account(Guid.NewGuid(), "Drake", AccountType.Asset, celebrityId.ToString());
+        var f1Account = new Account(Guid.NewGuid(), "Follower1", AccountType.Asset, follower1Id.ToString());
+        var f2Account = new Account(Guid.NewGuid(), "Follower2", AccountType.Asset, follower2Id.ToString());
         var sinkId = Guid.NewGuid();
-        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId);
+        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId.ToString());
         await accountRepo.CreateAsync(sellerAccount);
         await accountRepo.CreateAsync(celebrityAccount);
         await accountRepo.CreateAsync(f1Account);
@@ -79,17 +79,17 @@ public class SocialTradingTests
             new(sinkAccount.Id, 35m, EntryType.Credit, SettlementPhase.Clearing)
         });
 
-        copyTradingService.Follow(follower1Id, celebrityId);
-        copyTradingService.Follow(follower2Id, celebrityId);
+        copyTradingService.Follow(follower1Id.ToString(), celebrityId.ToString());
+        copyTradingService.Follow(follower2Id.ToString(), celebrityId.ToString());
 
         const string outcomeId = "outcome-mirror-match";
         const decimal askPrice = 0.50m;
         const decimal bidPrice = 0.60m;
 
-        var sellerAsk = new Order(Guid.NewGuid(), sellerId, outcomeId, OrderType.Ask, askPrice, 100m);
+        var sellerAsk = new Order(Guid.NewGuid(), sellerId.ToString(), outcomeId, OrderType.Ask, askPrice, 100m);
         await marketService.PlaceOrderAsync(sellerAsk);
 
-        var celebrityBid = new Order(Guid.NewGuid(), celebrityId, outcomeId, OrderType.Bid, bidPrice, 50m);
+        var celebrityBid = new Order(Guid.NewGuid(), celebrityId.ToString(), outcomeId, OrderType.Bid, bidPrice, 50m);
         var result = await marketService.PlaceOrderAsync(celebrityBid);
 
         Assert.True(result.MatchCount >= 1);
@@ -113,11 +113,11 @@ public class SocialTradingTests
         var (accountRepo, _, _, marketService) = CreateSocialStack();
 
         var userId = Guid.NewGuid();
-        var account = new Account(Guid.NewGuid(), "Solo", AccountType.Asset, userId);
+        var account = new Account(Guid.NewGuid(), "Solo", AccountType.Asset, userId.ToString());
         await accountRepo.CreateAsync(account);
 
         const string outcomeId = "outcome-solo";
-        var order = new Order(Guid.NewGuid(), userId, outcomeId, OrderType.Bid, 0.60m, 20m);
+        var order = new Order(Guid.NewGuid(), userId.ToString(), outcomeId, OrderType.Bid, 0.60m, 20m);
         await marketService.PlaceOrderAsync(order);
 
         var book = marketService.GetOrderBook(outcomeId);

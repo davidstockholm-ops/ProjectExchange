@@ -44,7 +44,7 @@ public class PerformanceStressTests
         var sellerIds = new List<Guid>();
         var buyerAccountIds = new List<Guid>();
         var sinkId = Guid.NewGuid();
-        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId);
+        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId.ToString());
         await accountRepo.CreateAsync(sinkAccount);
         for (int i = 0; i < orderCount; i++)
         {
@@ -52,10 +52,10 @@ public class PerformanceStressTests
             var sellerId = Guid.NewGuid();
             buyerIds.Add(buyerId);
             sellerIds.Add(sellerId);
-            var buyerAcc = new Account(Guid.NewGuid(), $"Buyer{i}", AccountType.Asset, buyerId);
+            var buyerAcc = new Account(Guid.NewGuid(), $"Buyer{i}", AccountType.Asset, buyerId.ToString());
             await accountRepo.CreateAsync(buyerAcc);
             buyerAccountIds.Add(buyerAcc.Id);
-            await accountRepo.CreateAsync(new Account(Guid.NewGuid(), $"Seller{i}", AccountType.Asset, sellerId));
+            await accountRepo.CreateAsync(new Account(Guid.NewGuid(), $"Seller{i}", AccountType.Asset, sellerId.ToString()));
         }
 
         var fundingEntries = new List<JournalEntry>();
@@ -64,8 +64,8 @@ public class PerformanceStressTests
         fundingEntries.Add(new JournalEntry(sinkAccount.Id, orderCount * quantityPerOrder * price, EntryType.Credit, SettlementPhase.Clearing));
         await ledgerService.PostTransactionAsync(fundingEntries);
 
-        var buyOrders = buyerIds.Select((id, i) => new Order(Guid.NewGuid(), id, outcomeId, OrderType.Bid, price, quantityPerOrder)).ToList();
-        var sellOrders = sellerIds.Select((id, i) => new Order(Guid.NewGuid(), id, outcomeId, OrderType.Ask, price, quantityPerOrder)).ToList();
+        var buyOrders = buyerIds.Select((id, i) => new Order(Guid.NewGuid(), id.ToString(), outcomeId, OrderType.Bid, price, quantityPerOrder)).ToList();
+        var sellOrders = sellerIds.Select((id, i) => new Order(Guid.NewGuid(), id.ToString(), outcomeId, OrderType.Ask, price, quantityPerOrder)).ToList();
 
         var sw = Stopwatch.StartNew();
         var placeTasks = buyOrders.Select(o => marketService.PlaceOrderAsync(o))
@@ -96,8 +96,8 @@ public class PerformanceStressTests
 
         var celebrityId = Guid.NewGuid();
         var lpId = Guid.NewGuid();
-        var celebrityAccount = new Account(Guid.NewGuid(), "Drake", AccountType.Asset, celebrityId);
-        var lpAccount = new Account(Guid.NewGuid(), "LP", AccountType.Asset, lpId);
+        var celebrityAccount = new Account(Guid.NewGuid(), "Drake", AccountType.Asset, celebrityId.ToString());
+        var lpAccount = new Account(Guid.NewGuid(), "LP", AccountType.Asset, lpId.ToString());
         await accountRepo.CreateAsync(celebrityAccount);
         await accountRepo.CreateAsync(lpAccount);
 
@@ -107,14 +107,14 @@ public class PerformanceStressTests
         {
             var fanId = Guid.NewGuid();
             fanIds.Add(fanId);
-            var fanAcc = new Account(Guid.NewGuid(), $"Fan{i}", AccountType.Asset, fanId);
+            var fanAcc = new Account(Guid.NewGuid(), $"Fan{i}", AccountType.Asset, fanId.ToString());
             await accountRepo.CreateAsync(fanAcc);
             fanAccountIds.Add(fanAcc.Id);
-            copyTradingService.Follow(fanId, celebrityId);
+            copyTradingService.Follow(fanId.ToString(), celebrityId.ToString());
         }
 
         var sinkId = Guid.NewGuid();
-        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId);
+        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId.ToString());
         await accountRepo.CreateAsync(sinkAccount);
         var fundingEntries = new List<JournalEntry>
         {
@@ -125,13 +125,13 @@ public class PerformanceStressTests
         fundingEntries.Add(new JournalEntry(sinkAccount.Id, celebrityQuantity * price + followerCount * followerQuantity * price, EntryType.Credit, SettlementPhase.Clearing));
         await ledgerService.PostTransactionAsync(fundingEntries);
 
-        var lpAsk = new Order(Guid.NewGuid(), lpId, outcomeId, OrderType.Ask, price, lpQuantity);
+        var lpAsk = new Order(Guid.NewGuid(), lpId.ToString(), outcomeId, OrderType.Ask, price, lpQuantity);
         await marketService.PlaceOrderAsync(lpAsk);
 
-        var celebrityBid = new Order(Guid.NewGuid(), celebrityId, outcomeId, OrderType.Bid, price, celebrityQuantity);
+        var celebrityBid = new Order(Guid.NewGuid(), celebrityId.ToString(), outcomeId, OrderType.Bid, price, celebrityQuantity);
         await marketService.PlaceOrderAsync(celebrityBid);
 
-        var followerOrders = fanIds.Select(fanId => new Order(Guid.NewGuid(), fanId, outcomeId, OrderType.Bid, price, followerQuantity)).ToList();
+        var followerOrders = fanIds.Select(fanId => new Order(Guid.NewGuid(), fanId.ToString(), outcomeId, OrderType.Bid, price, followerQuantity)).ToList();
         var bombardTasks = followerOrders.Select(o => marketService.PlaceOrderAsync(o)).ToList();
         await Task.WhenAll(bombardTasks);
 

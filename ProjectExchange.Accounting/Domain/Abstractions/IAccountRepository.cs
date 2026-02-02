@@ -8,6 +8,6 @@ namespace ProjectExchange.Accounting.Domain.Abstractions;
 public interface IAccountRepository
 {
     Task<Account?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<Account>> GetByOperatorIdAsync(Guid operatorId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Account>> GetByOperatorIdAsync(string operatorId, CancellationToken cancellationToken = default);
     Task CreateAsync(Account account, CancellationToken cancellationToken = default);
 }

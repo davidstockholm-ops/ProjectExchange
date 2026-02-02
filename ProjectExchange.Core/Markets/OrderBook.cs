@@ -3,7 +3,7 @@ namespace ProjectExchange.Core.Markets;
 /// <summary>
 /// Result of a match between a bid and an ask: price, quantity, buyer and seller user IDs.
 /// </summary>
-public record MatchResult(decimal Price, decimal Quantity, Guid BuyerUserId, Guid SellerUserId);
+public record MatchResult(decimal Price, decimal Quantity, string BuyerUserId, string SellerUserId);
 
 /// <summary>
 /// Order book for a market: Bids sorted descending by price, Asks sorted ascending by price.

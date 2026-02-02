@@ -36,16 +36,16 @@ public class GrandFinalIntegrationTests
         var fan4Id = Guid.NewGuid();
         var fan5Id = Guid.NewGuid();
 
-        var celebrityAccount = new Account(Guid.NewGuid(), actorId, AccountType.Asset, celebrityId);
-        var lpAccount = new Account(Guid.NewGuid(), "Liquidity Provider", AccountType.Asset, liquidityProviderId);
-        var fan1Account = new Account(Guid.NewGuid(), "Fan1", AccountType.Asset, fan1Id);
-        var fan2Account = new Account(Guid.NewGuid(), "Fan2", AccountType.Asset, fan2Id);
-        var fan3Account = new Account(Guid.NewGuid(), "Fan3", AccountType.Asset, fan3Id);
-        var fan4Account = new Account(Guid.NewGuid(), "Fan4", AccountType.Asset, fan4Id);
-        var fan5Account = new Account(Guid.NewGuid(), "Fan5", AccountType.Asset, fan5Id);
+        var celebrityAccount = new Account(Guid.NewGuid(), actorId, AccountType.Asset, celebrityId.ToString());
+        var lpAccount = new Account(Guid.NewGuid(), "Liquidity Provider", AccountType.Asset, liquidityProviderId.ToString());
+        var fan1Account = new Account(Guid.NewGuid(), "Fan1", AccountType.Asset, fan1Id.ToString());
+        var fan2Account = new Account(Guid.NewGuid(), "Fan2", AccountType.Asset, fan2Id.ToString());
+        var fan3Account = new Account(Guid.NewGuid(), "Fan3", AccountType.Asset, fan3Id.ToString());
+        var fan4Account = new Account(Guid.NewGuid(), "Fan4", AccountType.Asset, fan4Id.ToString());
+        var fan5Account = new Account(Guid.NewGuid(), "Fan5", AccountType.Asset, fan5Id.ToString());
 
         var sinkId = Guid.NewGuid();
-        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId);
+        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId.ToString());
         await accountRepo.CreateAsync(celebrityAccount);
         await accountRepo.CreateAsync(lpAccount);
         await accountRepo.CreateAsync(fan1Account);
@@ -66,11 +66,11 @@ public class GrandFinalIntegrationTests
             new(sinkAccount.Id, 50m, EntryType.Credit, SettlementPhase.Clearing)
         });
 
-        copyTradingService.Follow(fan1Id, celebrityId);
-        copyTradingService.Follow(fan2Id, celebrityId);
-        copyTradingService.Follow(fan3Id, celebrityId);
-        copyTradingService.Follow(fan4Id, celebrityId);
-        copyTradingService.Follow(fan5Id, celebrityId);
+        copyTradingService.Follow(fan1Id.ToString(), celebrityId.ToString());
+        copyTradingService.Follow(fan2Id.ToString(), celebrityId.ToString());
+        copyTradingService.Follow(fan3Id.ToString(), celebrityId.ToString());
+        copyTradingService.Follow(fan4Id.ToString(), celebrityId.ToString());
+        copyTradingService.Follow(fan5Id.ToString(), celebrityId.ToString());
 
         var evt = oracle.CreateMarketEvent(actorId, "Grand Final", "Flash", 5);
         var outcomeId = evt.OutcomeId;
@@ -78,10 +78,10 @@ public class GrandFinalIntegrationTests
         Assert.True(evt.IsActive);
         Assert.Equal(actorId, evt.ActorId);
 
-        var lpAsk = new Order(Guid.NewGuid(), liquidityProviderId, outcomeId, OrderType.Ask, 0.50m, 150m);
+        var lpAsk = new Order(Guid.NewGuid(), liquidityProviderId.ToString(), outcomeId, OrderType.Ask, 0.50m, 150m);
         await marketService.PlaceOrderAsync(lpAsk);
 
-        var celebrityBid = new Order(Guid.NewGuid(), celebrityId, outcomeId, OrderType.Bid, 0.50m, 50m);
+        var celebrityBid = new Order(Guid.NewGuid(), celebrityId.ToString(), outcomeId, OrderType.Bid, 0.50m, 50m);
         var result = await marketService.PlaceOrderAsync(celebrityBid);
 
         Assert.True(result.MatchCount >= 1, $"{actorId}'s order should have matched.");

@@ -37,10 +37,10 @@ public class SecurityIntegrityTests
 
         var buyerId = Guid.NewGuid();
         var sellerId = Guid.NewGuid();
-        var buyerAccount = new Account(Guid.NewGuid(), "Buyer", AccountType.Asset, buyerId);
-        var sellerAccount = new Account(Guid.NewGuid(), "Seller", AccountType.Asset, sellerId);
+        var buyerAccount = new Account(Guid.NewGuid(), "Buyer", AccountType.Asset, buyerId.ToString());
+        var sellerAccount = new Account(Guid.NewGuid(), "Seller", AccountType.Asset, sellerId.ToString());
         var sinkId = Guid.NewGuid();
-        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId);
+        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId.ToString());
         await accountRepo.CreateAsync(buyerAccount);
         await accountRepo.CreateAsync(sellerAccount);
         await accountRepo.CreateAsync(sinkAccount);
@@ -52,10 +52,10 @@ public class SecurityIntegrityTests
         });
 
         const string outcomeId = "security-outcome-insufficient";
-        var sellerAsk = new Order(Guid.NewGuid(), sellerId, outcomeId, OrderType.Ask, 0.75m, 200m);
+        var sellerAsk = new Order(Guid.NewGuid(), sellerId.ToString(), outcomeId, OrderType.Ask, 0.75m, 200m);
         await marketService.PlaceOrderAsync(sellerAsk);
 
-        var buyerBid = new Order(Guid.NewGuid(), buyerId, outcomeId, OrderType.Bid, 0.75m, 200m);
+        var buyerBid = new Order(Guid.NewGuid(), buyerId.ToString(), outcomeId, OrderType.Bid, 0.75m, 200m);
         var ex = await Assert.ThrowsAsync<InsufficientFundsException>(() => marketService.PlaceOrderAsync(buyerBid));
         Assert.Equal(150m, ex.Required);
         Assert.Equal(100m, ex.Available);
@@ -85,11 +85,11 @@ public class SecurityIntegrityTests
         var marketService = new MarketService(orderBookStore, accountRepo, transactionRepo, context, copyTradingService, ledgerService, registry);
 
         var userId = Guid.NewGuid();
-        var account = new Account(Guid.NewGuid(), "User", AccountType.Asset, userId);
+        var account = new Account(Guid.NewGuid(), "User", AccountType.Asset, userId.ToString());
         await accountRepo.CreateAsync(account);
 
         const string invalidOutcomeId = "outcome-nonexistent-in-system";
-        var order = new Order(Guid.NewGuid(), userId, invalidOutcomeId, OrderType.Bid, 0.50m, 10m);
+        var order = new Order(Guid.NewGuid(), userId.ToString(), invalidOutcomeId, OrderType.Bid, 0.50m, 10m);
 
         var ex = await Assert.ThrowsAsync<InvalidOutcomeException>(() => marketService.PlaceOrderAsync(order));
         Assert.Equal(invalidOutcomeId, ex.OutcomeId);
@@ -110,8 +110,8 @@ public class SecurityIntegrityTests
 
         var userId = Guid.NewGuid();
         var sinkId = Guid.NewGuid();
-        var account = new Account(Guid.NewGuid(), "User", AccountType.Asset, userId);
-        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId);
+        var account = new Account(Guid.NewGuid(), "User", AccountType.Asset, userId.ToString());
+        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId.ToString());
         await accountRepo.CreateAsync(account);
         await accountRepo.CreateAsync(sinkAccount);
         await ledgerService.PostTransactionAsync(new List<JournalEntry>
@@ -122,7 +122,7 @@ public class SecurityIntegrityTests
         var balanceBefore = await ledgerService.GetAccountBalanceAsync(account.Id, null);
 
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            new Order(Guid.NewGuid(), userId, "any-outcome", OrderType.Bid, -10.00m, 10m));
+            new Order(Guid.NewGuid(), userId.ToString(), "any-outcome", OrderType.Bid, -10.00m, 10m));
 
         var balanceAfter = await ledgerService.GetAccountBalanceAsync(account.Id, null);
         Assert.Equal(balanceBefore, balanceAfter);

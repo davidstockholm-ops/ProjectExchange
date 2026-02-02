@@ -10,16 +10,18 @@ public class Account
     public Guid Id { get; }
     public string Name { get; }
     public AccountType Type { get; }
-    public Guid OperatorId { get; }
+    public string OperatorId { get; }
 
-    public Account(Guid id, string name, AccountType type, Guid operatorId)
+    public Account(Guid id, string name, AccountType type, string operatorId)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Account name is required.", nameof(name));
+        if (string.IsNullOrWhiteSpace(operatorId))
+            throw new ArgumentException("OperatorId is required.", nameof(operatorId));
 
         Id = id;
         Name = name.Trim();
         Type = type;
-        OperatorId = operatorId;
+        OperatorId = operatorId.Trim();
     }
 }

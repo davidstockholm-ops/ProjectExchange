@@ -2,19 +2,24 @@ namespace ProjectExchange.Core.Markets;
 
 /// <summary>
 /// An order in the matching engine: Bid or Ask at a price (0.00–1.00) for an outcome.
+/// Enterprise: OperatorId is required for secondary market and settlement/ledger.
 /// </summary>
 public class Order
 {
     public Guid Id { get; }
-    public Guid UserId { get; }
+    public string UserId { get; }
+    /// <summary>Operator owning the settlement/ledger context. Required for secondary market (Enterprise).</summary>
+    public string? OperatorId { get; }
     public string OutcomeId { get; }
     public OrderType Type { get; }
     public decimal Price { get; }
     /// <summary>Remaining quantity (decremented when matched).</summary>
     public decimal Quantity { get; private set; }
 
-    public Order(Guid id, Guid userId, string outcomeId, OrderType type, decimal price, decimal quantity)
+    public Order(Guid id, string userId, string outcomeId, OrderType type, decimal price, decimal quantity, string? operatorId = null)
     {
+        if (string.IsNullOrWhiteSpace(userId))
+            throw new ArgumentException("UserId is required.", nameof(userId));
         if (string.IsNullOrWhiteSpace(outcomeId))
             throw new ArgumentException("OutcomeId is required.", nameof(outcomeId));
         if (price < 0.00m || price > 1.00m)
@@ -23,7 +28,8 @@ public class Order
             throw new ArgumentOutOfRangeException(nameof(quantity), "Quantity must be positive.");
 
         Id = id;
-        UserId = userId;
+        UserId = userId.Trim();
+        OperatorId = operatorId?.Trim();
         OutcomeId = outcomeId.Trim();
         Type = type;
         Price = price;

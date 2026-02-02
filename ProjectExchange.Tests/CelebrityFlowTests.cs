@@ -27,7 +27,7 @@ public class CelebrityFlowTests
     {
         var (accountRepo, ledgerService, oracle, copyTradingEngine, autoSettlementAgent) = CreateCelebrityStack();
 
-        var operatorId = Guid.NewGuid();
+        var operatorId = Guid.NewGuid().ToString();
         const decimal tradeAmount = 250m;
         const string outcomeId = "outcome-wins";
         const string outcomeName = "Wins";
@@ -69,7 +69,7 @@ public class CelebrityFlowTests
     {
         var (accountRepo, ledgerService, oracle, copyTradingEngine, autoSettlementAgent) = CreateCelebrityStack();
 
-        var operatorId = Guid.NewGuid();
+        var operatorId = Guid.NewGuid().ToString();
         const decimal tradeAmount = 100m;
         const string outcomeId = "outcome-y";
         const string actorId = "Drake";
@@ -104,7 +104,7 @@ public class CelebrityFlowTests
     {
         var (accountRepo, ledgerService, oracle, copyTradingEngine, autoSettlementAgent) = CreateCelebrityStack();
 
-        var operatorId = Guid.NewGuid();
+        var operatorId = Guid.NewGuid().ToString();
         const decimal tradeAmount = 100m;
         const string outcomeId = "outcome-idempotent";
         const string actorId = "Drake";
@@ -142,7 +142,7 @@ public class CelebrityFlowTests
     {
         var (accountRepo, ledgerService, oracle, copyTradingEngine, _) = CreateCelebrityStack();
 
-        var operatorId = Guid.NewGuid();
+        var operatorId = Guid.NewGuid().ToString();
         const decimal tradeAmount = 150m;
         const string outcomeId = "outcome-via-oracle";
         const string actorId = "Drake";

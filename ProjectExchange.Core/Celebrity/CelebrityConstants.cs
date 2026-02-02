@@ -7,7 +7,7 @@ namespace ProjectExchange.Core.Celebrity;
 public static class CelebrityConstants
 {
     /// <summary>System operator for platform accounts (e.g. Market Holding per outcome).</summary>
-    public static readonly Guid SystemOperatorId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+    public const string SystemOperatorId = "system";
 
     /// <summary>Name prefix for outcome-specific Market Holding accounts (one per outcome).</summary>
     public const string MarketHoldingAccountNamePrefix = "Market Holding Account - ";
@@ -20,7 +20,7 @@ public static class CelebrityConstants
         string.IsNullOrWhiteSpace(actorId) ? DefaultMainOperatingAccountName : $"{actorId.Trim()} Main Operating Account";
 
     /// <summary>Default Master Trader ID used when simulating a trade (copy-trading). Use this operator when calling Simulate so mirrors apply.</summary>
-    public static readonly Guid MasterTraderId = Guid.Parse("00000000-0000-0000-0000-000000000002");
+    public const string MasterTraderId = "master-trader";
 
     /// <summary>Default balance when auto-creating celebrity wallets for testing/agentic use.</summary>
     public const decimal DefaultAutoCreateBalance = 1_000_000m;

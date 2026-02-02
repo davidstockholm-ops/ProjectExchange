@@ -8,7 +8,7 @@ namespace ProjectExchange.Accounting.Domain.Abstractions;
 public interface ITransactionRepository
 {
     Task<Transaction?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<Transaction>> GetByOperatorIdAsync(Guid operatorId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Transaction>> GetByOperatorIdAsync(string operatorId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Transaction>> GetByAccountIdAsync(Guid accountId, CancellationToken cancellationToken = default);
     Task AppendAsync(Transaction transaction, CancellationToken cancellationToken = default);
 }

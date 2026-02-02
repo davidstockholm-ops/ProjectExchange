@@ -20,7 +20,7 @@ public class InMemoryTransactionRepository : ITransactionRepository
         return Task.FromResult(tx);
     }
 
-    public async Task<IReadOnlyList<Transaction>> GetByOperatorIdAsync(Guid operatorId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Transaction>> GetByOperatorIdAsync(string operatorId, CancellationToken cancellationToken = default)
     {
         var accounts = await _accountRepository.GetByOperatorIdAsync(operatorId, cancellationToken);
         var accountIds = accounts.Select(a => a.Id).ToHashSet();

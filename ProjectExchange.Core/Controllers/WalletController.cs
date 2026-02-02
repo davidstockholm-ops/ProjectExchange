@@ -28,9 +28,12 @@ public class WalletController : ControllerBase
         [FromBody] CreateWalletRequest request,
         CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(request.OperatorId))
+            return BadRequest("OperatorId is required.");
+        var operatorId = request.OperatorId.Trim();
         var name = string.IsNullOrWhiteSpace(request.Name) ? "Wallet" : request.Name.Trim();
         var id = request.Id ?? Guid.NewGuid();
-        var account = new Account(id, name, AccountType.Asset, request.OperatorId);
+        var account = new Account(id, name, AccountType.Asset, operatorId);
         await _accountRepository.CreateAsync(account, cancellationToken);
 
         return CreatedAtAction(
@@ -60,7 +63,7 @@ public class WalletController : ControllerBase
     }
 }
 
-/// <summary>Request to create a wallet. Name is optional (defaults to "Wallet").</summary>
-public record CreateWalletRequest(Guid OperatorId, string? Name = null, Guid? Id = null);
-public record CreateWalletResponse(Guid Id, string Name, Guid OperatorId);
+/// <summary>Request to create a wallet. OperatorId is string (e.g. "apple-pay", "david"). Name is optional (defaults to "Wallet").</summary>
+public record CreateWalletRequest(string OperatorId, string? Name = null, Guid? Id = null);
+public record CreateWalletResponse(Guid Id, string Name, string OperatorId);
 public record GetBalanceResponse(Guid AccountId, decimal Balance, string Phase);

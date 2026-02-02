@@ -26,5 +26,5 @@ public interface IOutcomeOracle : IMarketOracle
     /// <param name="outcomeId">Outcome identifier.</param>
     /// <param name="outcomeName">Display name for the outcome.</param>
     /// <param name="actorId">Optional actor ID (e.g. "Drake", "Elon"); used for account naming and display.</param>
-    CelebrityTradeSignal SimulateTrade(Guid operatorId, decimal amount, string outcomeId, string outcomeName = "Outcome X", string? actorId = null);
+    CelebrityTradeSignal SimulateTrade(string operatorId, decimal amount, string outcomeId, string outcomeName = "Outcome X", string? actorId = null);
 }

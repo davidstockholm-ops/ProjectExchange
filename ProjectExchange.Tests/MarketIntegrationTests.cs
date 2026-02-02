@@ -29,10 +29,10 @@ public class MarketIntegrationTests
 
         var buyerId = Guid.NewGuid();
         var sellerId = Guid.NewGuid();
-        var buyerAccount = new Account(Guid.NewGuid(), "Buyer", AccountType.Asset, buyerId);
-        var sellerAccount = new Account(Guid.NewGuid(), "Seller", AccountType.Asset, sellerId);
+        var buyerAccount = new Account(Guid.NewGuid(), "Buyer", AccountType.Asset, buyerId.ToString());
+        var sellerAccount = new Account(Guid.NewGuid(), "Seller", AccountType.Asset, sellerId.ToString());
         var sinkId = Guid.NewGuid();
-        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId);
+        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId.ToString());
         await accountRepo.CreateAsync(buyerAccount);
         await accountRepo.CreateAsync(sellerAccount);
         await accountRepo.CreateAsync(sinkAccount);
@@ -48,8 +48,8 @@ public class MarketIntegrationTests
             new(sinkAccount.Id, amount, EntryType.Credit, SettlementPhase.Clearing)
         });
 
-        var bid = new Order(Guid.NewGuid(), buyerId, outcomeId, OrderType.Bid, 0.60m, quantity);
-        var ask = new Order(Guid.NewGuid(), sellerId, outcomeId, OrderType.Ask, price, quantity);
+        var bid = new Order(Guid.NewGuid(), buyerId.ToString(), outcomeId, OrderType.Bid, 0.60m, quantity);
+        var ask = new Order(Guid.NewGuid(), sellerId.ToString(), outcomeId, OrderType.Ask, price, quantity);
 
         await marketService.PlaceOrderAsync(bid);
         var result = await marketService.PlaceOrderAsync(ask);
@@ -128,10 +128,10 @@ public class MarketIntegrationTests
 
         var buyerId = Guid.NewGuid();
         var sellerId = Guid.NewGuid();
-        var buyerAccount = new Account(Guid.NewGuid(), "Buyer", AccountType.Asset, buyerId);
-        var sellerAccount = new Account(Guid.NewGuid(), "Seller", AccountType.Asset, sellerId);
+        var buyerAccount = new Account(Guid.NewGuid(), "Buyer", AccountType.Asset, buyerId.ToString());
+        var sellerAccount = new Account(Guid.NewGuid(), "Seller", AccountType.Asset, sellerId.ToString());
         var sinkId = Guid.NewGuid();
-        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId);
+        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId.ToString());
         await accountRepo.CreateAsync(buyerAccount);
         await accountRepo.CreateAsync(sellerAccount);
         await accountRepo.CreateAsync(sinkAccount);
@@ -146,12 +146,12 @@ public class MarketIntegrationTests
         const decimal askPrice = 0.50m;
         const decimal bidPrice = 0.60m;
 
-        var ask = new Order(Guid.NewGuid(), sellerId, outcomeId, OrderType.Ask, askPrice, 100m);
+        var ask = new Order(Guid.NewGuid(), sellerId.ToString(), outcomeId, OrderType.Ask, askPrice, 100m);
         await marketService.PlaceOrderAsync(ask);
 
-        var bid1 = new Order(Guid.NewGuid(), buyerId, outcomeId, OrderType.Bid, bidPrice, 30m);
-        var bid2 = new Order(Guid.NewGuid(), buyerId, outcomeId, OrderType.Bid, bidPrice, 30m);
-        var bid3 = new Order(Guid.NewGuid(), buyerId, outcomeId, OrderType.Bid, bidPrice, 40m);
+        var bid1 = new Order(Guid.NewGuid(), buyerId.ToString(), outcomeId, OrderType.Bid, bidPrice, 30m);
+        var bid2 = new Order(Guid.NewGuid(), buyerId.ToString(), outcomeId, OrderType.Bid, bidPrice, 30m);
+        var bid3 = new Order(Guid.NewGuid(), buyerId.ToString(), outcomeId, OrderType.Bid, bidPrice, 40m);
 
         var r1 = await marketService.PlaceOrderAsync(bid1);
         var r2 = await marketService.PlaceOrderAsync(bid2);
@@ -184,9 +184,9 @@ public class MarketIntegrationTests
 
         var buyerId = Guid.NewGuid();
         var sellerId = Guid.NewGuid();
-        var buyerAccount = new Account(Guid.NewGuid(), "Buyer", AccountType.Asset, buyerId);
+        var buyerAccount = new Account(Guid.NewGuid(), "Buyer", AccountType.Asset, buyerId.ToString());
         var sinkId = Guid.NewGuid();
-        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId);
+        var sinkAccount = new Account(Guid.NewGuid(), "Sink", AccountType.Asset, sinkId.ToString());
         await accountRepo.CreateAsync(buyerAccount);
         await accountRepo.CreateAsync(sinkAccount);
         await ledgerService.PostTransactionAsync(new List<JournalEntry>
@@ -196,8 +196,8 @@ public class MarketIntegrationTests
         });
 
         const string outcomeId = "outcome-no-seller";
-        var ask = new Order(Guid.NewGuid(), sellerId, outcomeId, OrderType.Ask, 0.50m, 10m);
-        var bid = new Order(Guid.NewGuid(), buyerId, outcomeId, OrderType.Bid, 0.60m, 10m);
+        var ask = new Order(Guid.NewGuid(), sellerId.ToString(), outcomeId, OrderType.Ask, 0.50m, 10m);
+        var bid = new Order(Guid.NewGuid(), buyerId.ToString(), outcomeId, OrderType.Bid, 0.60m, 10m);
 
         await marketService.PlaceOrderAsync(ask);
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => marketService.PlaceOrderAsync(bid));

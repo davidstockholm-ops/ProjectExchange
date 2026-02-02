@@ -23,7 +23,7 @@ public sealed class ThrowingTransactionRepository : ITransactionRepository
     public Task<Transaction?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         _inner.GetByIdAsync(id, cancellationToken);
 
-    public Task<IReadOnlyList<Transaction>> GetByOperatorIdAsync(Guid operatorId, CancellationToken cancellationToken = default) =>
+    public Task<IReadOnlyList<Transaction>> GetByOperatorIdAsync(string operatorId, CancellationToken cancellationToken = default) =>
         _inner.GetByOperatorIdAsync(operatorId, cancellationToken);
 
     public Task<IReadOnlyList<Transaction>> GetByAccountIdAsync(Guid accountId, CancellationToken cancellationToken = default) =>
