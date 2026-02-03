@@ -7,6 +7,7 @@ namespace ProjectExchange.Core.Infrastructure.Persistence;
 
 /// <summary>
 /// EF Core implementation of <see cref="IAccountRepository"/> using <see cref="ProjectExchangeDbContext"/>.
+/// All data access uses <see cref="DbContext.Set{TEntity}"/> so table names come from the EF model (avoids "relation does not exist" in Postgres).
 /// </summary>
 public class EfAccountRepository : IAccountRepository
 {
@@ -19,7 +20,7 @@ public class EfAccountRepository : IAccountRepository
 
     public async Task<Account?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.Accounts
+        var entity = await _context.Set<AccountEntity>()
             .AsNoTracking()
             .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
         return entity == null ? null : ToDomain(entity);
@@ -27,7 +28,7 @@ public class EfAccountRepository : IAccountRepository
 
     public async Task<IReadOnlyList<Account>> GetByOperatorIdAsync(string operatorId, CancellationToken cancellationToken = default)
     {
-        var list = await _context.Accounts
+        var list = await _context.Set<AccountEntity>()
             .AsNoTracking()
             .Where(a => a.OperatorId == operatorId)
             .ToListAsync(cancellationToken);
@@ -36,10 +37,10 @@ public class EfAccountRepository : IAccountRepository
 
     public async Task CreateAsync(Account account, CancellationToken cancellationToken = default)
     {
-        if (await _context.Accounts.AnyAsync(a => a.Id == account.Id, cancellationToken))
+        if (await _context.Set<AccountEntity>().AnyAsync(a => a.Id == account.Id, cancellationToken))
             throw new InvalidOperationException($"Account {account.Id} already exists.");
 
-        _context.Accounts.Add(ToEntity(account));
+        _context.Set<AccountEntity>().Add(ToEntity(account));
         await _context.SaveChangesAsync(cancellationToken);
     }
 

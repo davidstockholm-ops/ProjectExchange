@@ -6,7 +6,7 @@ using ProjectExchange.Accounting.Domain.Enums;
 namespace ProjectExchange.Core.Infrastructure.Persistence;
 
 /// <summary>
-/// Persists LedgerEntry to the ledger_entries table (double-entry outcome ledger, snake_case).
+/// Persists LedgerEntry via <see cref="DbContext.Set{TEntity}"/> so table names come from the EF model (avoids "relation does not exist" in Postgres).
 /// </summary>
 public class EfLedgerEntryRepository : ILedgerEntryRepository
 {
@@ -32,12 +32,12 @@ public class EfLedgerEntryRepository : ILedgerEntryRepository
             Timestamp = e.Timestamp
         }).ToList();
 
-        await _context.LedgerEntries.AddRangeAsync(entities, cancellationToken);
+        await _context.Set<LedgerEntryEntity>().AddRangeAsync(entities, cancellationToken);
     }
 
     public async Task<IReadOnlyList<LedgerEntry>> GetByAccountIdAsync(Guid accountId, CancellationToken cancellationToken = default)
     {
-        var entities = await _context.LedgerEntries
+        var entities = await _context.Set<LedgerEntryEntity>()
             .AsNoTracking()
             .Where(e => e.AccountId == accountId)
             .OrderBy(e => e.Timestamp)
@@ -56,7 +56,7 @@ public class EfLedgerEntryRepository : ILedgerEntryRepository
         if (string.IsNullOrWhiteSpace(assetType))
             return Array.Empty<LedgerEntry>();
 
-        var entities = await _context.LedgerEntries
+        var entities = await _context.Set<LedgerEntryEntity>()
             .AsNoTracking()
             .Where(e => e.AssetType == assetType.Trim())
             .OrderBy(e => e.Timestamp)

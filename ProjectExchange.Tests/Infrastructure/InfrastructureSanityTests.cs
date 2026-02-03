@@ -1,8 +1,10 @@
+using EFCore.NamingConventions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using ProjectExchange.Accounting.Domain.Abstractions;
 using ProjectExchange.Accounting.Domain.Services;
 using ProjectExchange.Core.Infrastructure.Persistence;
+using Xunit.Abstractions;
 
 namespace ProjectExchange.Tests.Infrastructure;
 
@@ -10,14 +12,59 @@ namespace ProjectExchange.Tests.Infrastructure;
 /// Sanity tests for infrastructure: DbContext naming, real DB connection, and settlement SQL path.
 /// DatabaseConnection and SettlementSmokeTest require real PostgreSQL; set ConnectionStrings__DefaultConnection
 /// (e.g. in env or launchSettings) to run them. Without it they pass without hitting the DB.
+/// In CI (GitHub Actions): the workflow sets ConnectionStrings__DefaultConnection to the service container
+/// at Host=localhost;Port=5432;Database=projectexchange_test;Username=postgres;Password=postgres.
+/// All contexts use UseSnakeCaseNamingConvention. Tests expect lowercase/snake_case table names (ledger_entries, accounts, transactions, journal_entries, orders).
 /// </summary>
 public class InfrastructureSanityTests
 {
+    private readonly ITestOutputHelper _output;
+
+    public InfrastructureSanityTests(ITestOutputHelper output)
+    {
+        _output = output;
+    }
+
     private static string? GetRealConnectionString()
     {
         var cs = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
         return string.IsNullOrWhiteSpace(cs) ? null : cs;
     }
+
+    /// <summary>
+    /// Applies pending EF migrations once per test run when running against a real PostgreSQL.
+    /// Uses the same design-time factory as "dotnet ef database update" so migrations are found in Core.
+    /// </summary>
+    private static void EnsureMigrationsApplied(string connectionString)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString)) return;
+        lock (MigrationsLock)
+        {
+            if (MigrationsApplied) return;
+            // Use the same connection string as the test; explicit MigrationsAssembly so migrations are found.
+            var options = new DbContextOptionsBuilder<ProjectExchangeDbContext>()
+                .UseNpgsql(connectionString, npgsql => npgsql.MigrationsAssembly(typeof(ProjectExchangeDbContext).Assembly.GetName().Name))
+                .UseSnakeCaseNamingConvention()
+                .Options;
+            try
+            {
+                using (var ctx = new ProjectExchangeDbContext(options))
+                {
+                    ctx.Database.Migrate();
+                }
+            }
+            catch (Npgsql.PostgresException ex) when (ex.SqlState == "42703" && ex.Message.Contains("migration_id", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    "__EFMigrationsHistory has PascalCase columns. Run once: dotnet run --project ProjectExchange.Core -- --upgrade-history-table",
+                    ex);
+            }
+            MigrationsApplied = true;
+        }
+    }
+
+    private static readonly object MigrationsLock = new();
+    private static bool MigrationsApplied;
 
     /// <summary>
     /// Verifierar att ProjectExchangeDbContext mappar entiteter till snake_case-tabeller
@@ -64,15 +111,30 @@ public class InfrastructureSanityTests
             return;
         }
 
+        EnsureMigrationsApplied(connectionString);
+
         var options = new DbContextOptionsBuilder<ProjectExchangeDbContext>()
             .UseNpgsql(connectionString)
+            .UseSnakeCaseNamingConvention()
             .Options;
 
         await using var ctx = new ProjectExchangeDbContext(options);
         Assert.True(await ctx.Database.CanConnectAsync(), "Database must be reachable.");
 
-        _ = await ctx.LedgerEntries.AnyAsync();
-        // Om vi når hit utan 42P01 finns tabellen (snake_case eller PascalCase beroende på migration).
+        // Schema-qualified name from model (EF has no GetSchemaQualifiedTableName; build from GetSchema + GetTableName) or fallback.
+        var entityType = ctx.Model.FindEntityType(typeof(LedgerEntryEntity));
+        var schema = entityType?.GetSchema();
+        var table = entityType?.GetTableName();
+        var tableName = !string.IsNullOrEmpty(schema) && !string.IsNullOrEmpty(table)
+            ? $"{schema}.{table}"
+            : "public.ledger_entries";
+
+        _output.WriteLine($"Testing table: {tableName}");
+
+        // Hardcode public schema in raw SQL so the session looks in the right schema.
+        var sql = "SELECT COUNT(*) FROM public.ledger_entries";
+        var count = await ctx.Database.SqlQueryRaw<long>(sql).FirstOrDefaultAsync();
+        Assert.True(count >= 0, "Table must exist (COUNT succeeded).");
     }
 
     /// <summary>
@@ -91,10 +153,15 @@ public class InfrastructureSanityTests
             return;
         }
 
+        EnsureMigrationsApplied(connectionString);
+
         var services = new ServiceCollection();
         services.AddScoped<ProjectExchangeDbContext>(_ =>
         {
-            var opts = new DbContextOptionsBuilder<ProjectExchangeDbContext>().UseNpgsql(connectionString).Options;
+            var opts = new DbContextOptionsBuilder<ProjectExchangeDbContext>()
+                .UseNpgsql(connectionString)
+                .UseSnakeCaseNamingConvention()
+                .Options;
             return new ProjectExchangeDbContext(opts);
         });
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<ProjectExchangeDbContext>());

@@ -1,3 +1,4 @@
+using EFCore.NamingConventions;
 using Microsoft.EntityFrameworkCore;
 using ProjectExchange.Accounting.Domain.Abstractions;
 
@@ -5,13 +6,19 @@ namespace ProjectExchange.Core.Infrastructure.Persistence;
 
 /// <summary>
 /// EF Core DbContext for Project Exchange clearing and settlement data.
-/// Maps to domain: Account, Transaction, JournalEntry (Accounting ledger).
+/// Requires NuGet package EFCore.NamingConventions; OnConfiguring uses UseSnakeCaseNamingConvention() so all tables/columns are snake_case in Postgres.
+/// DbSets: Accounts, Transactions, JournalEntries, LedgerEntries, Orders. Table names in OnModelCreating are explicit snake_case (accounts, ledger_entries, etc.).
 /// </summary>
 public class ProjectExchangeDbContext : DbContext, IUnitOfWork
 {
     public ProjectExchangeDbContext(DbContextOptions<ProjectExchangeDbContext> options)
         : base(options)
     {
+    }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        optionsBuilder.UseSnakeCaseNamingConvention();
     }
 
     public DbSet<AccountEntity> Accounts => Set<AccountEntity>();
@@ -22,6 +29,7 @@ public class ProjectExchangeDbContext : DbContext, IUnitOfWork
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.HasDefaultSchema("public");
         modelBuilder.Entity<AccountEntity>(e =>
         {
             e.ToTable("accounts");

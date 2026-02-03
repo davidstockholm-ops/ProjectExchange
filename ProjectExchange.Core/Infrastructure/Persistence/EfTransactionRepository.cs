@@ -7,6 +7,7 @@ namespace ProjectExchange.Core.Infrastructure.Persistence;
 
 /// <summary>
 /// EF Core implementation of <see cref="ITransactionRepository"/>.
+/// All data access uses <see cref="DbContext.Set{TEntity}"/> so table names come from the EF model (avoids "relation does not exist" in Postgres).
 /// <see cref="AppendAsync"/> adds to the context but does NOT call SaveChanges; caller (or <see cref="IUnitOfWork"/>) must save.
 /// </summary>
 public class EfTransactionRepository : ITransactionRepository
@@ -20,7 +21,7 @@ public class EfTransactionRepository : ITransactionRepository
 
     public async Task<Transaction?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.Transactions
+        var entity = await _context.Set<TransactionEntity>()
             .AsNoTracking()
             .Include(t => t.JournalEntries)
             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
@@ -29,16 +30,16 @@ public class EfTransactionRepository : ITransactionRepository
 
     public async Task<IReadOnlyList<Transaction>> GetByOperatorIdAsync(string operatorId, CancellationToken cancellationToken = default)
     {
-        var accountIds = await _context.Accounts
+        var accountIds = await _context.Set<AccountEntity>()
             .Where(a => a.OperatorId == operatorId)
             .Select(a => a.Id)
             .ToListAsync(cancellationToken);
-        var transactionIds = await _context.JournalEntries
+        var transactionIds = await _context.Set<JournalEntryEntity>()
             .Where(j => accountIds.Contains(j.AccountId))
             .Select(j => j.TransactionId)
             .Distinct()
             .ToListAsync(cancellationToken);
-        var entities = await _context.Transactions
+        var entities = await _context.Set<TransactionEntity>()
             .AsNoTracking()
             .Include(t => t.JournalEntries)
             .Where(t => transactionIds.Contains(t.Id))
@@ -48,7 +49,7 @@ public class EfTransactionRepository : ITransactionRepository
 
     public async Task<IReadOnlyList<Transaction>> GetByAccountIdAsync(Guid accountId, CancellationToken cancellationToken = default)
     {
-        var entities = await _context.Transactions
+        var entities = await _context.Set<TransactionEntity>()
             .AsNoTracking()
             .Include(t => t.JournalEntries)
             .Where(t => t.JournalEntries.Any(j => j.AccountId == accountId))
@@ -61,13 +62,13 @@ public class EfTransactionRepository : ITransactionRepository
     /// </summary>
     public async Task AppendAsync(Transaction transaction, CancellationToken cancellationToken = default)
     {
-        var existsInDb = await _context.Transactions.AnyAsync(t => t.Id == transaction.Id, cancellationToken);
-        var existsLocal = _context.Transactions.Local.Any(t => t.Id == transaction.Id);
+        var existsInDb = await _context.Set<TransactionEntity>().AnyAsync(t => t.Id == transaction.Id, cancellationToken);
+        var existsLocal = _context.Set<TransactionEntity>().Local.Any(t => t.Id == transaction.Id);
         if (existsInDb || existsLocal)
             throw new InvalidOperationException($"Transaction {transaction.Id} already exists.");
 
         var entity = ToEntity(transaction);
-        _context.Transactions.Add(entity);
+        _context.Set<TransactionEntity>().Add(entity);
     }
 
     private static Transaction ToDomain(TransactionEntity e)

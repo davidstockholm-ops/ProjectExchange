@@ -1,3 +1,4 @@
+using EFCore.NamingConventions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
@@ -11,7 +12,11 @@ public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<ProjectExc
     public ProjectExchangeDbContext CreateDbContext(string[] args)
     {
         var optionsBuilder = new DbContextOptionsBuilder<ProjectExchangeDbContext>();
-        optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=projectexchange;Username=postgres;Password=postgres");
+        var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+            ?? "Host=localhost;Port=5432;Database=projectexchange;Username=postgres;Password=postgres";
+        optionsBuilder
+            .UseNpgsql(connectionString)
+            .UseSnakeCaseNamingConvention();
 
         return new ProjectExchangeDbContext(optionsBuilder.Options);
     }
