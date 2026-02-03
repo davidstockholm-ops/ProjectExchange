@@ -67,11 +67,10 @@ public class MasterArchitectureTest
             }
 
             // --- Step 3: Place BUY order for User A (Operator A) on market 'drake-test' at 0.5 ---
-            var buyRequest = new OrderRequest(MarketId, OrderPrice, OrderQuantity, OrderSide.Buy, OperatorA, UserA);
-            ActionResult<SecondaryOrderResponse> buyResult;
+            IActionResult buyResult;
             try
             {
-                buyResult = await controller.PostOrder(buyRequest);
+                buyResult = await controller.PostOrder(MarketId, OrderPrice, OrderQuantity, "Buy", OperatorA, UserA);
             }
             catch (Exception ex)
             {
@@ -79,20 +78,19 @@ public class MasterArchitectureTest
                     $"[CLASH at {stepPlaceBuy}] Controller -> Engine chain failed. {ex.Message}", ex);
             }
 
-            if (buyResult.Result is not OkObjectResult okBuy)
+            if (buyResult is not OkObjectResult okBuy)
                 throw new InvalidOperationException(
-                    $"[CLASH at {stepPlaceBuy}] Expected 200 OK. Got: {buyResult.Result?.GetType().Name ?? "null"}.");
+                    $"[CLASH at {stepPlaceBuy}] Expected 200 OK. Got: {buyResult?.GetType().Name ?? "null"}.");
             var buyResponse = okBuy.Value as SecondaryOrderResponse;
             if (buyResponse == null)
                 throw new InvalidOperationException(
                     $"[CLASH at {stepPlaceBuy}] Response body is not SecondaryOrderResponse.");
 
             // --- Step 4: Place SELL order for User B (Operator B) on same market at same price (should match) ---
-            var sellRequest = new OrderRequest(MarketId, OrderPrice, OrderQuantity, OrderSide.Sell, OperatorB, UserB);
-            ActionResult<SecondaryOrderResponse> sellResult;
+            IActionResult sellResult;
             try
             {
-                sellResult = await controller.PostOrder(sellRequest);
+                sellResult = await controller.PostOrder(MarketId, OrderPrice, OrderQuantity, "Sell", OperatorB, UserB);
             }
             catch (Exception ex)
             {
@@ -100,9 +98,9 @@ public class MasterArchitectureTest
                     $"[CLASH at {stepPlaceSell}] Controller -> Engine chain failed. {ex.Message}", ex);
             }
 
-            if (sellResult.Result is not OkObjectResult okSell)
+            if (sellResult is not OkObjectResult okSell)
                 throw new InvalidOperationException(
-                    $"[CLASH at {stepPlaceSell}] Expected 200 OK. Got: {sellResult.Result?.GetType().Name ?? "null"}.");
+                    $"[CLASH at {stepPlaceSell}] Expected 200 OK. Got: {sellResult?.GetType().Name ?? "null"}.");
             var sellResponse = okSell.Value as SecondaryOrderResponse;
             if (sellResponse == null)
                 throw new InvalidOperationException(

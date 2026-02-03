@@ -19,12 +19,15 @@ builder.Services.AddSwaggerGen(options =>
         Version = "v1",
         Description = "Clearing & Settlement. **Market** (api/markets): base/create, flash/create, celebrity/create, celebrity/simulate, outcome-reached, active, orderbook. **Secondary** (api/secondary): order, book/{marketId}. **Wallet** (api/wallet): create account."
     });
+    // Include XML comments (from GenerateDocumentationFile in .csproj) so parameter descriptions show in Swagger.
     var xmlPath = Path.Combine(AppContext.BaseDirectory, "ProjectExchange.Core.xml");
     if (File.Exists(xmlPath))
         options.IncludeXmlComments(xmlPath);
     options.TagActionsBy(api => new[] { api.ActionDescriptor.RouteValues["controller"] ?? "Default" });
 });
 builder.Services.AddControllers();
+// Temporarily allow requests to reach the controller so we can log what is failing instead of silent 400.
+builder.Services.Configure<Microsoft.AspNetCore.Mvc.ApiBehaviorOptions>(options => options.SuppressModelStateInvalidFilter = true);
 
 // PostgreSQL + EF Core: DbContext and unit of work (scoped per request)
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
@@ -69,6 +72,11 @@ using (var scope = app.Services.CreateScope())
 // Market Holding accounts are created per outcome by CopyTradingEngine on first trade (Clearing & Settlement).
 
 // Configure the HTTP request pipeline.
+app.Use(async (context, next) =>
+{
+    Console.WriteLine($"[GLOBAL LOG] {context.Request.Method} {context.Request.Path}");
+    await next();
+});
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
