@@ -36,7 +36,8 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
-          cache: true
+          # cache: true requires packages.lock.json; we don't use lock files, so disable cache
+          cache: false
 
       - name: Verify solution and projects (Linux path/case check)
         run: |
