@@ -9,6 +9,44 @@ using ProjectExchange.Core.Social;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
+// CLI: truncate clearing/ledger tables (no psql required). Usage: dotnet run --project ProjectExchange.Core -- --truncate-tables
+// Truncates each table separately so missing tables (e.g. Orders) are skipped.
+if (args.Contains("--truncate-tables"))
+{
+    var options = new DbContextOptionsBuilder<ProjectExchangeDbContext>().UseNpgsql(connectionString).Options;
+    using var ctx = new ProjectExchangeDbContext(options);
+    var tablePairs = new (string Snake, string Pascal)[]
+    {
+        ("journal_entries", "\"JournalEntries\""),
+        ("transactions", "\"Transactions\""),
+        ("ledger_entries", "\"LedgerEntries\""),
+        ("orders", "\"Orders\"")
+    };
+    var truncated = new List<string>();
+    foreach (var (snake, pascal) in tablePairs)
+    {
+        try
+        {
+            ctx.Database.ExecuteSqlRaw($"TRUNCATE TABLE {snake} RESTART IDENTITY CASCADE;");
+            truncated.Add(snake);
+        }
+        catch (Npgsql.PostgresException ex) when (ex.SqlState == "42P01")
+        {
+            try
+            {
+                ctx.Database.ExecuteSqlRaw($"TRUNCATE TABLE {pascal} RESTART IDENTITY CASCADE;");
+                truncated.Add(pascal);
+            }
+            catch (Npgsql.PostgresException ex2) when (ex2.SqlState == "42P01") { /* table does not exist, skip */ }
+        }
+    }
+    Console.WriteLine(truncated.Count > 0 ? $"Truncated: {string.Join(", ", truncated)}." : "No tables truncated (none of the target tables exist).");
+    return;
+}
+
 // Add services to the container.
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -17,7 +55,7 @@ builder.Services.AddSwaggerGen(options =>
     {
         Title = "Project Exchange API",
         Version = "v1",
-        Description = "Clearing & Settlement. **Market** (api/markets): base/create, flash/create, celebrity/create, celebrity/simulate, outcome-reached, active, orderbook. **Secondary** (api/secondary): order, book/{marketId}. **Wallet** (api/wallet): create account."
+        Description = "Clearing & Settlement. **Market** (api/markets): base/create, flash/create, celebrity/create, celebrity/simulate, outcome-reached, active, orderbook. **Secondary** (api/secondary): order, book/{marketId}. **Wallet** (api/wallet): create account. **Portfolio** (api/portfolio/{accountId}): aggregated holdings from LedgerEntries. **Admin** (api/admin): resolve-market (settlement by outcome)."
     });
     // Include XML comments (from GenerateDocumentationFile). Use assembly name so path matches on case-sensitive CI (Linux).
     var assemblyName = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name;
@@ -32,19 +70,22 @@ builder.Services.AddControllers();
 builder.Services.Configure<Microsoft.AspNetCore.Mvc.ApiBehaviorOptions>(options => options.SuppressModelStateInvalidFilter = true);
 
 // PostgreSQL + EF Core: DbContext and unit of work (scoped per request)
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 builder.Services.AddDbContext<ProjectExchangeDbContext>(options =>
-    options.UseNpgsql(connectionString));
+    options.UseNpgsql(connectionString).UseSnakeCaseNamingConvention());
 builder.Services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<ProjectExchangeDbContext>());
 
-// Accounting: EF repositories and LedgerService (scoped)
+// Accounting: EF repositories, LedgerService, and AccountingService (double-entry outcome ledger)
 builder.Services.AddScoped<IAccountRepository, EfAccountRepository>();
 builder.Services.AddScoped<ITransactionRepository, EfTransactionRepository>();
+builder.Services.AddScoped<ILedgerEntryRepository, EfLedgerEntryRepository>();
 builder.Services.AddScoped<LedgerService>();
+builder.Services.AddScoped<AccountingService>();
+builder.Services.AddScoped<PortfolioService>();
+builder.Services.AddScoped<SettlementService>();
 
 // Shared order books (singleton) and matching engine (scoped)
 builder.Services.AddSingleton<IOrderBookStore, OrderBookStore>();
+builder.Services.AddSingleton<IOutcomeAssetTypeResolver, OutcomeAssetTypeResolver>();
 builder.Services.AddScoped<IMatchingEngine, MockMatchingEngine>();
 builder.Services.AddScoped<MarketService>();
 

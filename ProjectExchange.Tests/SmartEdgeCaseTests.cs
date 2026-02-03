@@ -157,7 +157,9 @@ public class SmartEdgeCaseTests
         var transactionRepo = scope.ServiceProvider.GetRequiredService<ITransactionRepository>();
         var orderBookStore = new OrderBookStore();
         var copyTradingService = new CopyTradingService();
-        var marketService = new MarketService(orderBookStore, accountRepo, transactionRepo, context, copyTradingService, ledgerService);
+        var accountingService = scope.ServiceProvider.GetRequiredService<AccountingService>();
+        var outcomeAssetTypeResolver = scope.ServiceProvider.GetRequiredService<IOutcomeAssetTypeResolver>();
+        var marketService = new MarketService(orderBookStore, accountRepo, transactionRepo, context, copyTradingService, ledgerService, accountingService, outcomeAssetTypeResolver);
 
         var buyerId = Guid.NewGuid();
         var sellerId = Guid.NewGuid();

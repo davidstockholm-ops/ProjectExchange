@@ -56,7 +56,10 @@ public static class EnterpriseTestSetup
         services.AddSingleton<IUnitOfWork>(sp => sp.GetRequiredService<ProjectExchangeDbContext>());
         services.AddScoped<IAccountRepository, EfAccountRepository>();
         services.AddScoped<ITransactionRepository, EfTransactionRepository>();
+        services.AddScoped<ILedgerEntryRepository, EfLedgerEntryRepository>();
         services.AddScoped<LedgerService>();
+        services.AddScoped<AccountingService>();
+        services.AddSingleton<IOutcomeAssetTypeResolver, OutcomeAssetTypeResolver>();
         return services.BuildServiceProvider();
     }
 
@@ -76,9 +79,11 @@ public static class EnterpriseTestSetup
         var accountRepo = scope.ServiceProvider.GetRequiredService<IAccountRepository>();
         var transactionRepo = scope.ServiceProvider.GetRequiredService<ITransactionRepository>();
         var ledgerService = scope.ServiceProvider.GetRequiredService<LedgerService>();
+        var accountingService = scope.ServiceProvider.GetRequiredService<AccountingService>();
+        var outcomeAssetTypeResolver = scope.ServiceProvider.GetRequiredService<IOutcomeAssetTypeResolver>();
         var orderBookStore = new OrderBookStore();
         var copyTradingService = new CopyTradingService();
-        var marketService = new MarketService(orderBookStore, accountRepo, transactionRepo, context, copyTradingService, ledgerService);
+        var marketService = new MarketService(orderBookStore, accountRepo, transactionRepo, context, copyTradingService, ledgerService, accountingService, outcomeAssetTypeResolver);
         return (accountRepo, transactionRepo, ledgerService, marketService, orderBookStore);
     }
 
@@ -122,9 +127,11 @@ public static class EnterpriseTestSetup
         var accountRepo = scope.ServiceProvider.GetRequiredService<IAccountRepository>();
         var transactionRepo = scope.ServiceProvider.GetRequiredService<ITransactionRepository>();
         var ledgerService = scope.ServiceProvider.GetRequiredService<LedgerService>();
+        var accountingService = scope.ServiceProvider.GetRequiredService<AccountingService>();
+        var outcomeAssetTypeResolver = scope.ServiceProvider.GetRequiredService<IOutcomeAssetTypeResolver>();
         var orderBookStore = new OrderBookStore();
         var copyTradingService = new CopyTradingService();
-        var marketService = new MarketService(orderBookStore, accountRepo, transactionRepo, context, copyTradingService, ledgerService);
+        var marketService = new MarketService(orderBookStore, accountRepo, transactionRepo, context, copyTradingService, ledgerService, accountingService, outcomeAssetTypeResolver);
         return (accountRepo, ledgerService, copyTradingService, marketService);
     }
 
@@ -216,7 +223,10 @@ public static class EnterpriseTestSetup
         services.AddSingleton<IUnitOfWork>(sp => sp.GetRequiredService<ProjectExchangeDbContext>());
         services.AddScoped<IAccountRepository, EfAccountRepository>();
         services.AddScoped<ITransactionRepository, EfTransactionRepository>();
+        services.AddScoped<ILedgerEntryRepository, EfLedgerEntryRepository>();
         services.AddScoped<LedgerService>();
+        services.AddScoped<AccountingService>();
+        services.AddSingleton<IOutcomeAssetTypeResolver, OutcomeAssetTypeResolver>();
         services.AddSingleton<IOrderBookStore, OrderBookStore>();
         services.AddSingleton<CopyTradingService>();
         services.AddScoped<MarketService>();

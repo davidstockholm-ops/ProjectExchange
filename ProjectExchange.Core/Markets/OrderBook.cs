@@ -76,4 +76,18 @@ public class OrderBook
 
         return results;
     }
+
+    /// <summary>
+    /// Removes all active orders (bids and asks) that belong to the given operator.
+    /// Used by DELETE /api/secondary/orders/{marketId}/{operatorId} to clear liquidity provider positions.
+    /// </summary>
+    /// <returns>Number of orders removed.</returns>
+    public int RemoveOrdersByOperator(string operatorId)
+    {
+        if (string.IsNullOrWhiteSpace(operatorId))
+            return 0;
+        var bidRemoved = _bids.RemoveAll(o => string.Equals(o.OperatorId, operatorId.Trim(), StringComparison.OrdinalIgnoreCase));
+        var askRemoved = _asks.RemoveAll(o => string.Equals(o.OperatorId, operatorId.Trim(), StringComparison.OrdinalIgnoreCase));
+        return bidRemoved + askRemoved;
+    }
 }

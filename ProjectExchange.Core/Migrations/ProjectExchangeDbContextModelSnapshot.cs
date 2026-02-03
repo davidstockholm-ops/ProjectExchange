@@ -39,7 +39,7 @@ namespace ProjectExchange.Core.Migrations
 
                     b.HasIndex("OperatorId", "Name");
 
-                    b.ToTable("Accounts", (string)null);
+                    b.ToTable("accounts", (string)null);
                 });
 
             modelBuilder.Entity("ProjectExchange.Core.Infrastructure.Persistence.JournalEntryEntity", b =>
@@ -69,7 +69,40 @@ namespace ProjectExchange.Core.Migrations
 
                     b.HasIndex("TransactionId");
 
-                    b.ToTable("JournalEntries", (string)null);
+                    b.ToTable("journal_entries", (string)null);
+                });
+
+            modelBuilder.Entity("ProjectExchange.Core.Infrastructure.Persistence.LedgerEntryEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AssetType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<int>("Direction")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("Timestamp");
+
+                    b.ToTable("ledger_entries", (string)null);
                 });
 
             modelBuilder.Entity("ProjectExchange.Core.Infrastructure.Persistence.TransactionEntity", b =>
@@ -89,7 +122,7 @@ namespace ProjectExchange.Core.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Transactions", (string)null);
+                    b.ToTable("transactions", (string)null);
                 });
 
             modelBuilder.Entity("ProjectExchange.Core.Infrastructure.Persistence.JournalEntryEntity", b =>

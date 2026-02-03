@@ -17,13 +17,14 @@ public class ProjectExchangeDbContext : DbContext, IUnitOfWork
     public DbSet<AccountEntity> Accounts => Set<AccountEntity>();
     public DbSet<TransactionEntity> Transactions => Set<TransactionEntity>();
     public DbSet<JournalEntryEntity> JournalEntries => Set<JournalEntryEntity>();
+    public DbSet<LedgerEntryEntity> LedgerEntries => Set<LedgerEntryEntity>();
     public DbSet<OrderEntity> Orders => Set<OrderEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<AccountEntity>(e =>
         {
-            e.ToTable("Accounts");
+            e.ToTable("accounts");
             e.HasKey(x => x.Id);
             e.Property(x => x.Name).HasMaxLength(256);
             e.HasIndex(x => new { x.OperatorId, x.Name }).IsUnique(false);
@@ -31,7 +32,7 @@ public class ProjectExchangeDbContext : DbContext, IUnitOfWork
 
         modelBuilder.Entity<TransactionEntity>(e =>
         {
-            e.ToTable("Transactions");
+            e.ToTable("transactions");
             e.HasKey(x => x.Id);
             e.Property(x => x.Type);
             e.Property(x => x.SettlesClearingTransactionId);
@@ -39,7 +40,7 @@ public class ProjectExchangeDbContext : DbContext, IUnitOfWork
 
         modelBuilder.Entity<JournalEntryEntity>(e =>
         {
-            e.ToTable("JournalEntries");
+            e.ToTable("journal_entries");
             e.HasKey(x => x.Id);
             e.HasOne(x => x.Transaction)
                 .WithMany(t => t.JournalEntries)
@@ -49,9 +50,18 @@ public class ProjectExchangeDbContext : DbContext, IUnitOfWork
             e.HasIndex(x => x.TransactionId);
         });
 
+        modelBuilder.Entity<LedgerEntryEntity>(e =>
+        {
+            e.ToTable("ledger_entries");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.AssetType).HasMaxLength(64);
+            e.HasIndex(x => x.AccountId);
+            e.HasIndex(x => x.Timestamp);
+        });
+
         modelBuilder.Entity<OrderEntity>(e =>
         {
-            e.ToTable("Orders");
+            e.ToTable("orders");
             e.HasKey(x => x.Id);
             e.Property(x => x.OutcomeId).HasMaxLength(128);
             e.Property(x => x.Price).HasPrecision(18, 4);

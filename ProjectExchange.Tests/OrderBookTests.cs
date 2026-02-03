@@ -180,4 +180,31 @@ public class OrderBookTests
         var results = book.MatchOrders();
         Assert.Empty(results);
     }
+
+    [Fact]
+    public void RemoveOrdersByOperator_RemovesOnlyOrdersForGivenOperator()
+    {
+        var book = new OrderBook();
+        var bidMm = new Order(Guid.NewGuid(), "u1", "outcome-x", OrderType.Bid, 0.50m, 10m, "mm-provider");
+        var askMm = new Order(Guid.NewGuid(), "u1", "outcome-x", OrderType.Ask, 0.55m, 10m, "mm-provider");
+        var bidRetail = new Order(Guid.NewGuid(), "u2", "outcome-x", OrderType.Bid, 0.45m, 5m, "apple-pay");
+        book.AddOrder(bidMm);
+        book.AddOrder(askMm);
+        book.AddOrder(bidRetail);
+
+        var removed = book.RemoveOrdersByOperator("mm-provider");
+
+        Assert.Equal(2, removed);
+        Assert.Single(book.Bids);
+        Assert.Empty(book.Asks);
+        Assert.Equal("apple-pay", book.Bids[0].OperatorId);
+    }
+
+    [Fact]
+    public void RemoveOrdersByOperator_EmptyBook_ReturnsZero()
+    {
+        var book = new OrderBook();
+        var removed = book.RemoveOrdersByOperator("mm-provider");
+        Assert.Equal(0, removed);
+    }
 }

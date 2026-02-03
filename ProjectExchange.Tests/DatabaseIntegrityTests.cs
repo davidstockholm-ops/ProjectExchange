@@ -28,12 +28,14 @@ public class DatabaseIntegrityTests
         using var scope = provider.CreateScope();
         var accountRepo = scope.ServiceProvider.GetRequiredService<IAccountRepository>();
         var transactionRepo = scope.ServiceProvider.GetRequiredService<ITransactionRepository>();
-        var throwingRepo = new ThrowingTransactionRepository(transactionRepo, throwOnCall: 2);
+        var throwingRepo = new ThrowingTransactionRepository(transactionRepo, throwOnCall: 1);
 
         var orderBookStore = new OrderBookStore();
         var copyTradingService = new CopyTradingService();
         var ledgerService = scope.ServiceProvider.GetRequiredService<LedgerService>();
-        var marketService = new MarketService(orderBookStore, accountRepo, throwingRepo, context, copyTradingService, ledgerService);
+        var accountingService = scope.ServiceProvider.GetRequiredService<AccountingService>();
+        var outcomeAssetTypeResolver = scope.ServiceProvider.GetRequiredService<IOutcomeAssetTypeResolver>();
+        var marketService = new MarketService(orderBookStore, accountRepo, throwingRepo, context, copyTradingService, ledgerService, accountingService, outcomeAssetTypeResolver);
 
         var seller1Id = Guid.NewGuid();
         var seller2Id = Guid.NewGuid();
@@ -53,6 +55,7 @@ public class DatabaseIntegrityTests
             new(buyerAccount.Id, 25m, EntryType.Debit, SettlementPhase.Clearing),
             new(sinkAccount.Id, 25m, EntryType.Credit, SettlementPhase.Clearing)
         });
+        await context.SaveChangesAsync();
 
         const string outcomeId = "outcome-rollback";
         var ask1 = new Order(Guid.NewGuid(), seller1Id.ToString(), outcomeId, OrderType.Ask, 0.50m, 50m);
@@ -62,6 +65,8 @@ public class DatabaseIntegrityTests
         await marketService.PlaceOrderAsync(ask1);
         await marketService.PlaceOrderAsync(ask2);
 
+        // ThrowingTransactionRepository throws on 2nd call; 1st match triggers one AppendAsync, so use throwOnCall: 1
+        // so the trade's AppendAsync throws and we verify rollback (buyer balance unchanged).
         await Assert.ThrowsAsync<DbUpdateException>(async () =>
             await marketService.PlaceOrderAsync(bid));
 

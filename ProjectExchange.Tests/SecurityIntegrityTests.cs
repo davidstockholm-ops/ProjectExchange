@@ -33,7 +33,9 @@ public class SecurityIntegrityTests
         var transactionRepo = scope.ServiceProvider.GetRequiredService<ITransactionRepository>();
         var orderBookStore = new OrderBookStore();
         var copyTradingService = new CopyTradingService();
-        var marketService = new MarketService(orderBookStore, accountRepo, transactionRepo, context, copyTradingService, ledgerService);
+        var accountingService = scope.ServiceProvider.GetRequiredService<AccountingService>();
+        var outcomeAssetTypeResolver = scope.ServiceProvider.GetRequiredService<IOutcomeAssetTypeResolver>();
+        var marketService = new MarketService(orderBookStore, accountRepo, transactionRepo, context, copyTradingService, ledgerService, accountingService, outcomeAssetTypeResolver);
 
         var buyerId = Guid.NewGuid();
         var sellerId = Guid.NewGuid();
@@ -81,8 +83,10 @@ public class SecurityIntegrityTests
         var transactionRepo = scope.ServiceProvider.GetRequiredService<ITransactionRepository>();
         var orderBookStore = new OrderBookStore();
         var copyTradingService = new CopyTradingService();
+        var accountingService = scope.ServiceProvider.GetRequiredService<AccountingService>();
+        var outcomeAssetTypeResolver = scope.ServiceProvider.GetRequiredService<IOutcomeAssetTypeResolver>();
         var registry = new OutcomeRegistry();
-        var marketService = new MarketService(orderBookStore, accountRepo, transactionRepo, context, copyTradingService, ledgerService, registry);
+        var marketService = new MarketService(orderBookStore, accountRepo, transactionRepo, context, copyTradingService, ledgerService, accountingService, outcomeAssetTypeResolver, registry);
 
         var userId = Guid.NewGuid();
         var account = new Account(Guid.NewGuid(), "User", AccountType.Asset, userId.ToString());

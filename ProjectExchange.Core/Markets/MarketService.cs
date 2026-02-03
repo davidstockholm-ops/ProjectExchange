@@ -24,6 +24,8 @@ public class MarketService
     private readonly ProjectExchangeDbContext _dbContext;
     private readonly CopyTradingService _copyTradingService;
     private readonly LedgerService _ledgerService;
+    private readonly AccountingService _accountingService;
+    private readonly IOutcomeAssetTypeResolver _outcomeAssetTypeResolver;
     private readonly IOutcomeRegistry? _outcomeRegistry;
 
     public MarketService(
@@ -33,6 +35,8 @@ public class MarketService
         ProjectExchangeDbContext dbContext,
         CopyTradingService copyTradingService,
         LedgerService ledgerService,
+        AccountingService accountingService,
+        IOutcomeAssetTypeResolver outcomeAssetTypeResolver,
         IOutcomeRegistry? outcomeRegistry = null)
     {
         _orderBookStore = orderBookStore ?? throw new ArgumentNullException(nameof(orderBookStore));
@@ -41,6 +45,8 @@ public class MarketService
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _copyTradingService = copyTradingService ?? throw new ArgumentNullException(nameof(copyTradingService));
         _ledgerService = ledgerService ?? throw new ArgumentNullException(nameof(ledgerService));
+        _accountingService = accountingService ?? throw new ArgumentNullException(nameof(accountingService));
+        _outcomeAssetTypeResolver = outcomeAssetTypeResolver ?? throw new ArgumentNullException(nameof(outcomeAssetTypeResolver));
         _outcomeRegistry = outcomeRegistry;
     }
 
@@ -100,6 +106,17 @@ public class MarketService
                     var transaction = new Transaction(txId, entries, null, null, TransactionType.Trade);
                     await _transactionRepository.AppendAsync(transaction, cancellationToken);
                     tradeTransactionIds.Add(txId);
+
+                    // Outcome ledger: BookTradeAsync (cash + outcome asset) using dynamic OutcomeAssetType from market
+                    var outcomeAssetType = _outcomeAssetTypeResolver.GetOutcomeAssetType(order.OutcomeId);
+                    await _accountingService.BookTradeAsync(
+                        buyerAccountId,
+                        sellerAccountId,
+                        cashAmount: amount,
+                        outcomeAssetType,
+                        outcomeQuantity: match.Quantity,
+                        timestamp: null,
+                        cancellationToken);
                 }
 
                 await _dbContext.SaveChangesAsync(cancellationToken);
