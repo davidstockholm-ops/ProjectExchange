@@ -19,8 +19,10 @@ builder.Services.AddSwaggerGen(options =>
         Version = "v1",
         Description = "Clearing & Settlement. **Market** (api/markets): base/create, flash/create, celebrity/create, celebrity/simulate, outcome-reached, active, orderbook. **Secondary** (api/secondary): order, book/{marketId}. **Wallet** (api/wallet): create account."
     });
-    // Include XML comments (from GenerateDocumentationFile in .csproj) so parameter descriptions show in Swagger.
-    var xmlPath = Path.Combine(AppContext.BaseDirectory, "ProjectExchange.Core.xml");
+    // Include XML comments (from GenerateDocumentationFile). Use assembly name so path matches on case-sensitive CI (Linux).
+    var assemblyName = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name;
+    var xmlFileName = $"{assemblyName}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFileName);
     if (File.Exists(xmlPath))
         options.IncludeXmlComments(xmlPath);
     options.TagActionsBy(api => new[] { api.ActionDescriptor.RouteValues["controller"] ?? "Default" });

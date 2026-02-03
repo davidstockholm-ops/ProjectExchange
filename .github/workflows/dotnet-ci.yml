@@ -9,6 +9,9 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
     # Uncomment for integration tests that require PostgreSQL:
     # services:
     #   postgres:
@@ -35,6 +38,11 @@ jobs:
           dotnet-version: "8.0.x"
           cache: true
 
+      - name: Verify solution and projects (Linux path/case check)
+        run: |
+          ls -la ProjectExchange.sln 2>/dev/null || (echo "ERROR: ProjectExchange.sln not found (check path/casing)"; exit 1)
+          dotnet sln list
+
       - name: Restore
         run: dotnet restore ProjectExchange.sln
 
@@ -44,4 +52,4 @@ jobs:
       - name: Test
         env:
           ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=projectexchange_test;Username=postgres;Password=postgres"
-        run: dotnet test ProjectExchange.sln --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx"
+        run: dotnet test ProjectExchange.sln --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx" --logger "console;verbosity=detailed"
