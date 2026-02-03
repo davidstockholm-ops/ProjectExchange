@@ -70,7 +70,7 @@ public class MasterArchitectureTest
             IActionResult buyResult;
             try
             {
-                buyResult = await controller.PostOrder(MarketId, OrderPrice, OrderQuantity, "Buy", OperatorA, UserA);
+                buyResult = await controller.PostOrder(MarketId, OrderPrice, OrderQuantity, "Buy", OperatorA, UserA, default);
             }
             catch (Exception ex)
             {
@@ -90,7 +90,7 @@ public class MasterArchitectureTest
             IActionResult sellResult;
             try
             {
-                sellResult = await controller.PostOrder(MarketId, OrderPrice, OrderQuantity, "Sell", OperatorB, UserB);
+                sellResult = await controller.PostOrder(MarketId, OrderPrice, OrderQuantity, "Sell", OperatorB, UserB, default);
             }
             catch (Exception ex)
             {
