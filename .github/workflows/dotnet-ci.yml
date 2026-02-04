@@ -80,7 +80,7 @@ jobs:
       - name: Apply migrations (PostgreSQL service container)
         env:
           ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=projectexchange_test;Username=postgres;Password=postgres;SearchPath=public"
-        run: dotnet ef database update --project ProjectExchange.Core --no-build
+        run: dotnet ef database update --project ProjectExchange.Core --no-build --configuration Release
 
       # SearchPath=public in connection string. --no-build reuses Build step output (no double build). TRX in fixed dir.
       - name: Test
