@@ -87,7 +87,8 @@ public class NamingConventionTests
         var skipSegments = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "bin", "obj", ".git", ".vs", "node_modules",
-            ".github", "scripts"
+            ".github", "scripts",
+            "project-exchange-frontend"  // Next.js frontend uses lowercase/hyphens by convention
         };
 
         foreach (var dir in Directory.GetDirectories(root, "*", SearchOption.AllDirectories))
