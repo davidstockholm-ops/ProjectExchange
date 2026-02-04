@@ -56,5 +56,5 @@ jobs:
 
       - name: Test
         env:
-          ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=projectexchange_test;Username=postgres;Password=postgres"
+          ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=projectexchange_test;Username=postgres;Password=postgres;SearchPath=public"
         run: dotnet test ProjectExchange.sln --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx" --logger "console;verbosity=detailed"

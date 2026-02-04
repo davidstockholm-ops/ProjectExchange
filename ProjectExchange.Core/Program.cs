@@ -16,50 +16,33 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 // Truncates each table separately so missing tables (e.g. Orders) are skipped.
 if (args.Contains("--truncate-tables"))
 {
-    var options = new DbContextOptionsBuilder<ProjectExchangeDbContext>().UseNpgsql(connectionString).Options;
+    var options = new DbContextOptionsBuilder<ProjectExchangeDbContext>()
+        .UseNpgsql(connectionString)
+        .UseSnakeCaseNamingConvention()
+        .Options;
     using var ctx = new ProjectExchangeDbContext(options);
-    // Whitelist: only these table names are ever used (no user input) to avoid SQL injection.
-    var tablePairs = new (string Snake, string Pascal)[]
-    {
-        ("journal_entries", "\"JournalEntries\""),
-        ("transactions", "\"Transactions\""),
-        ("ledger_entries", "\"LedgerEntries\""),
-        ("orders", "\"Orders\"")
-    };
+    // Whitelist: snake_case table names only (no user input). Matches UseSnakeCaseNamingConvention DB.
+    var tables = new[] { "journal_entries", "transactions", "ledger_entries", "orders" };
     var truncated = new List<string>();
-    foreach (var (snake, pascal) in tablePairs)
+    foreach (var tableName in tables)
     {
-        var sqlSnake = GetTruncateSql(snake);
-        var sqlPascal = GetTruncateSql(pascal);
         try
         {
-            ctx.Database.ExecuteSqlRaw(sqlSnake);
-            truncated.Add(snake);
+            var sql = GetTruncateSql(tableName);
+            ctx.Database.ExecuteSqlRaw(sql);
+            truncated.Add(tableName);
         }
-        catch (Npgsql.PostgresException ex) when (ex.SqlState == "42P01")
-        {
-            try
-            {
-                ctx.Database.ExecuteSqlRaw(sqlPascal);
-                truncated.Add(pascal);
-            }
-            catch (Npgsql.PostgresException ex2) when (ex2.SqlState == "42P01") { /* table does not exist, skip */ }
-        }
+        catch (Npgsql.PostgresException ex) when (ex.SqlState == "42P01") { /* table does not exist, skip */ }
     }
 
     static string GetTruncateSql(string tableName)
     {
-        // Only allow known identifiers; no interpolation of user input.
         return tableName switch
         {
             "journal_entries" => "TRUNCATE TABLE journal_entries RESTART IDENTITY CASCADE;",
             "transactions" => "TRUNCATE TABLE transactions RESTART IDENTITY CASCADE;",
             "ledger_entries" => "TRUNCATE TABLE ledger_entries RESTART IDENTITY CASCADE;",
             "orders" => "TRUNCATE TABLE orders RESTART IDENTITY CASCADE;",
-            "\"JournalEntries\"" => "TRUNCATE TABLE \"JournalEntries\" RESTART IDENTITY CASCADE;",
-            "\"Transactions\"" => "TRUNCATE TABLE \"Transactions\" RESTART IDENTITY CASCADE;",
-            "\"LedgerEntries\"" => "TRUNCATE TABLE \"LedgerEntries\" RESTART IDENTITY CASCADE;",
-            "\"Orders\"" => "TRUNCATE TABLE \"Orders\" RESTART IDENTITY CASCADE;",
             _ => throw new ArgumentOutOfRangeException(nameof(tableName), tableName, "Unknown table name.")
         };
     }
@@ -71,7 +54,10 @@ if (args.Contains("--truncate-tables"))
 // Run once on existing DBs before using UseSnakeCaseNamingConvention so "dotnet ef database update" can read the history table.
 if (args.Contains("--upgrade-history-table"))
 {
-    var options = new DbContextOptionsBuilder<ProjectExchangeDbContext>().UseNpgsql(connectionString).Options;
+    var options = new DbContextOptionsBuilder<ProjectExchangeDbContext>()
+        .UseNpgsql(connectionString)
+        .UseSnakeCaseNamingConvention()
+        .Options;
     using var ctx = new ProjectExchangeDbContext(options);
     try
     {
@@ -93,6 +79,7 @@ if (args.Contains("--reset-and-migrate"))
 {
     var options = new DbContextOptionsBuilder<ProjectExchangeDbContext>()
         .UseNpgsql(connectionString)
+        .UseSnakeCaseNamingConvention()
         .Options;
     using var ctx = new ProjectExchangeDbContext(options);
     ctx.Database.ExecuteSqlRaw(@"DELETE FROM ""__EFMigrationsHistory"";");

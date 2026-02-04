@@ -1,3 +1,4 @@
+using System.Data;
 using EFCore.NamingConventions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,7 +15,8 @@ namespace ProjectExchange.Tests.Infrastructure;
 /// (e.g. in env or launchSettings) to run them. Without it they pass without hitting the DB.
 /// In CI (GitHub Actions): the workflow sets ConnectionStrings__DefaultConnection to the service container
 /// at Host=localhost;Port=5432;Database=projectexchange_test;Username=postgres;Password=postgres.
-/// All contexts use UseSnakeCaseNamingConvention. Tests expect lowercase/snake_case table names (ledger_entries, accounts, transactions, journal_entries, orders).
+/// All contexts use UseSnakeCaseNamingConvention. All raw SQL uses lowercase only for tables and columns
+/// (e.g. public.ledger_entries, value, amount); no double-quoted identifiers. Tables: ledger_entries, accounts, transactions, journal_entries, orders.
 /// </summary>
 public class InfrastructureSanityTests
 {
@@ -131,10 +133,14 @@ public class InfrastructureSanityTests
 
         _output.WriteLine($"Testing table: {tableName}");
 
-        // Hardcode public schema in raw SQL so the session looks in the right schema.
-        var sql = "SELECT COUNT(*) FROM public.ledger_entries";
-        var count = await ctx.Database.SqlQueryRaw<long>(sql).FirstOrDefaultAsync();
-        Assert.True(count >= 0, "Table must exist (COUNT succeeded).");
+        using (var command = ctx.Database.GetDbConnection().CreateCommand())
+        {
+            command.CommandText = "SELECT COUNT(*) FROM public.ledger_entries";
+            if (ctx.Database.GetDbConnection().State != ConnectionState.Open)
+                await ctx.Database.OpenConnectionAsync();
+            var count = Convert.ToInt64(await command.ExecuteScalarAsync());
+            Assert.True(count >= 0, "Table must exist (COUNT succeeded).");
+        }
     }
 
     /// <summary>
