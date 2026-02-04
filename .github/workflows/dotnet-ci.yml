@@ -9,6 +9,7 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: .
@@ -54,8 +55,8 @@ jobs:
         run: |
           for i in $(seq 1 30); do
             if nc -z localhost 5432 2>/dev/null; then
-              echo "Postgres port open, waiting 10s for filesystem init..."
-              sleep 10
+              echo "Postgres port open, waiting 5s for filesystem init..."
+              sleep 5
               exit 0
             fi
             echo "Waiting for Postgres... $i/30"
@@ -81,7 +82,7 @@ jobs:
           ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=projectexchange_test;Username=postgres;Password=postgres;SearchPath=public"
         run: dotnet ef database update --project ProjectExchange.Core --no-build
 
-      # SearchPath=public in connection string. TRX in fixed dir so we always have an artifact path.
+      # SearchPath=public in connection string. --no-build reuses Build step output (no double build). TRX in fixed dir.
       - name: Test
         id: test
         env:
