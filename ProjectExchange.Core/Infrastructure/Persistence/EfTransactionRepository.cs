@@ -7,7 +7,7 @@ namespace ProjectExchange.Core.Infrastructure.Persistence;
 
 /// <summary>
 /// EF Core implementation of <see cref="ITransactionRepository"/>.
-/// All data access uses <see cref="DbContext.Set{TEntity}"/> so table names come from the EF model (avoids "relation does not exist" in Postgres).
+/// All data access uses DbContext.Set{T} so table names come from the EF model (avoids "relation does not exist" in Postgres).
 /// <see cref="AppendAsync"/> adds to the context but does NOT call SaveChanges; caller (or <see cref="IUnitOfWork"/>) must save.
 /// </summary>
 public class EfTransactionRepository : ITransactionRepository

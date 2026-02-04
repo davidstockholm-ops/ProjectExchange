@@ -6,7 +6,7 @@ using ProjectExchange.Accounting.Domain.Enums;
 namespace ProjectExchange.Core.Infrastructure.Persistence;
 
 /// <summary>
-/// Persists LedgerEntry via <see cref="DbContext.Set{TEntity}"/> so table names come from the EF model (avoids "relation does not exist" in Postgres).
+/// Persists LedgerEntry via DbContext.Set{T} so table names come from the EF model (avoids "relation does not exist" in Postgres).
 /// </summary>
 public class EfLedgerEntryRepository : ILedgerEntryRepository
 {

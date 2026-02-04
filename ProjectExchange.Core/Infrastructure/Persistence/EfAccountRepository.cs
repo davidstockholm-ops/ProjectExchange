@@ -7,7 +7,7 @@ namespace ProjectExchange.Core.Infrastructure.Persistence;
 
 /// <summary>
 /// EF Core implementation of <see cref="IAccountRepository"/> using <see cref="ProjectExchangeDbContext"/>.
-/// All data access uses <see cref="DbContext.Set{TEntity}"/> so table names come from the EF model (avoids "relation does not exist" in Postgres).
+/// All data access uses DbContext.Set{T} so table names come from the EF model (avoids "relation does not exist" in Postgres).
 /// </summary>
 public class EfAccountRepository : IAccountRepository
 {
