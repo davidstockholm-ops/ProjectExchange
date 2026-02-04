@@ -54,8 +54,8 @@ jobs:
         run: |
           for i in $(seq 1 30); do
             if nc -z localhost 5432 2>/dev/null; then
-              echo "Postgres port open, allowing 2s for init..."
-              sleep 2
+              echo "Postgres port open, waiting 10s for filesystem init..."
+              sleep 10
               exit 0
             fi
             echo "Waiting for Postgres... $i/30"
@@ -64,18 +64,29 @@ jobs:
           echo "Postgres did not become ready"
           exit 1
 
-      # CI uses Database=projectexchange_test (created by service container POSTGRES_DB). Local may use projectexchange; both work with same migrations.
+      # Ensure database exists before migrations (runner connects via localhost; service container creates POSTGRES_DB but this guarantees it)
+      - name: Ensure database exists
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y postgresql-client
+          PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d postgres -c "CREATE DATABASE projectexchange_test;" || true
+
+      - name: Install dotnet-ef
+        run: |
+          dotnet tool install --global dotnet-ef
+          echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+
+      # CI uses Database=projectexchange_test (created above or by service POSTGRES_DB). Local may use projectexchange; same migrations.
       - name: Apply migrations (PostgreSQL service container)
         env:
           ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=projectexchange_test;Username=postgres;Password=postgres;SearchPath=public"
         run: dotnet ef database update --project ProjectExchange.Core --no-build
 
-      # SearchPath=public in connection string so all steps use the same schema. Verbosity normal + detailed console to see which test fails.
+      # SearchPath=public in connection string. TRX in fixed dir so we always have an artifact path.
       - name: Test
         id: test
         env:
           ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=projectexchange_test;Username=postgres;Password=postgres;SearchPath=public"
-        run: dotnet test ProjectExchange.sln --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx" --logger "console;verbosity=detailed"
+        run: dotnet test ProjectExchange.sln --no-build --configuration Release --verbosity normal -p:ParallelizeTestCollections=false --logger "trx;LogFileName=test-results.trx" --results-directory ./TestResults --logger "console;verbosity=detailed"
 
       # On any failure, upload test results so you can see the exact failing test in the Actions run
       - name: Upload test results on failure
@@ -83,4 +94,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: "**/test-results.trx"
+          path: "TestResults/**/*.trx"
