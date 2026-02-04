@@ -49,12 +49,38 @@ jobs:
       - name: Build
         run: dotnet build ProjectExchange.sln --no-restore --configuration Release
 
+      # Wait for Postgres to accept connections (service health can report ready before DB is fully ready)
+      - name: Wait for Postgres
+        run: |
+          for i in $(seq 1 30); do
+            if nc -z localhost 5432 2>/dev/null; then
+              echo "Postgres port open, allowing 2s for init..."
+              sleep 2
+              exit 0
+            fi
+            echo "Waiting for Postgres... $i/30"
+            sleep 2
+          done
+          echo "Postgres did not become ready"
+          exit 1
+
+      # CI uses Database=projectexchange_test (created by service container POSTGRES_DB). Local may use projectexchange; both work with same migrations.
       - name: Apply migrations (PostgreSQL service container)
         env:
           ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=projectexchange_test;Username=postgres;Password=postgres;SearchPath=public"
         run: dotnet ef database update --project ProjectExchange.Core --no-build
 
+      # SearchPath=public in connection string so all steps use the same schema. Verbosity normal + detailed console to see which test fails.
       - name: Test
+        id: test
         env:
           ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=projectexchange_test;Username=postgres;Password=postgres;SearchPath=public"
         run: dotnet test ProjectExchange.sln --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx" --logger "console;verbosity=detailed"
+
+      # On any failure, upload test results so you can see the exact failing test in the Actions run
+      - name: Upload test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: "**/test-results.trx"
