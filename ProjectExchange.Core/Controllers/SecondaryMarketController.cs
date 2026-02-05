@@ -19,11 +19,13 @@ public class SecondaryMarketController : ControllerBase
 
     private readonly IMatchingEngine _matchingEngine;
     private readonly IOrderBookStore _orderBookStore;
+    private readonly ITradeHistoryStore _tradeHistoryStore;
 
-    public SecondaryMarketController(IMatchingEngine matchingEngine, IOrderBookStore orderBookStore)
+    public SecondaryMarketController(IMatchingEngine matchingEngine, IOrderBookStore orderBookStore, ITradeHistoryStore tradeHistoryStore)
     {
         _matchingEngine = matchingEngine ?? throw new ArgumentNullException(nameof(matchingEngine));
         _orderBookStore = orderBookStore ?? throw new ArgumentNullException(nameof(orderBookStore));
+        _tradeHistoryStore = tradeHistoryStore ?? throw new ArgumentNullException(nameof(tradeHistoryStore));
     }
 
     /// <summary>Submit an order to the secondary market. All parameters must be sent as query string (not JSON body) so Swagger shows them as individual fields.</summary>
@@ -84,6 +86,10 @@ public class SecondaryMarketController : ControllerBase
 
         var result = await _matchingEngine.ProcessOrderAsync(order, cancellationToken);
 
+        var sideStr = orderType == OrderType.Bid ? "Buy" : "Sell";
+        foreach (var m in result.Matches)
+            _tradeHistoryStore.Record(marketIdTrimmed, m.Price, m.Quantity, sideStr);
+
         PrintMarketState(marketIdTrimmed);
         return Ok(new SecondaryOrderResponse(
             result.OrderId,
@@ -109,6 +115,24 @@ public class SecondaryMarketController : ControllerBase
         var bids = book.Bids.Select(o => new SecondaryBookLevel(o.Id, o.UserId, o.OperatorId, o.Price, o.Quantity)).ToList();
         var asks = book.Asks.Select(o => new SecondaryBookLevel(o.Id, o.UserId, o.OperatorId, o.Price, o.Quantity)).ToList();
         return Ok(new SecondaryBookResponse(key, bids, asks));
+    }
+
+    /// <summary>Retrieve executed trades (match history) for the given market. Newest first. JSON is camelCase (marketId, trades, id, time, price, quantity, side). Trades are stored in TradeHistoryStore when orders match in PostOrder/PostOrderBulk.</summary>
+    /// <param name="marketId">Outcome or market identifier (e.g. drake-album).</param>
+    /// <returns>List of trades. Empty if no trades yet.</returns>
+    [HttpGet("trades/{marketId}")]
+    [ProducesResponseType(typeof(SecondaryTradesResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public IActionResult GetTrades(string marketId)
+    {
+        Console.WriteLine($"[TRADES] GET /api/secondary/trades/{{marketId}} called with marketId={marketId}");
+        if (string.IsNullOrWhiteSpace(marketId))
+            return BadRequest("MarketId is required.");
+
+        var key = marketId.Trim();
+        var entries = _tradeHistoryStore.GetByMarketId(key);
+        var trades = entries.Select(t => new SecondaryTradeLevel(t.Id, t.Time, t.Price, t.Quantity, t.Side)).ToList();
+        return Ok(new SecondaryTradesResponse(key, trades));
     }
 
     /// <summary>Primary tool for clearing liquidity provider positions. Removes all active orders for the given market that belong to the specified operator (e.g. mm-provider).</summary>
@@ -178,6 +202,9 @@ public class SecondaryMarketController : ControllerBase
                 item.OperatorId.Trim());
 
             var result = await _matchingEngine.ProcessOrderAsync(order, cancellationToken);
+            var sideStr = order.Type == OrderType.Bid ? "Buy" : "Sell";
+            foreach (var m in result.Matches)
+                _tradeHistoryStore.Record(order.OutcomeId, m.Price, m.Quantity, sideStr);
             results.Add(new SecondaryOrderResponse(
                 result.OrderId,
                 result.Matches.Select(m => new SecondaryMatchLevel(m.Price, m.Quantity, m.BuyerUserId, m.SellerUserId)).ToList()));
@@ -259,6 +286,12 @@ public record SecondaryMatchLevel(decimal Price, decimal Quantity, string BuyerU
 public record SecondaryBookResponse(string MarketId, IReadOnlyList<SecondaryBookLevel> Bids, IReadOnlyList<SecondaryBookLevel> Asks);
 
 public record SecondaryBookLevel(Guid OrderId, string UserId, string? OperatorId, decimal Price, decimal Quantity);
+
+/// <summary>Response for GET /api/secondary/trades/{marketId}: executed trades (newest first).</summary>
+public record SecondaryTradesResponse(string MarketId, IReadOnlyList<SecondaryTradeLevel> Trades);
+
+/// <summary>Single trade row: id, time (UTC ISO), price, size, side (Buy/Sell).</summary>
+public record SecondaryTradeLevel(Guid Id, DateTimeOffset Time, decimal Price, decimal Quantity, string Side);
 
 /// <summary>Request body for POST /api/secondary/order/bulk. All orders must use operatorId "mm-provider".</summary>
 public record BulkOrderRequest(IReadOnlyList<BulkOrderItem> Orders);

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -14,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useExchangeHub } from "@/hooks/useExchangeHub";
 import { useOrderBook, type OrderBookLevel } from "@/hooks/useOrderBook";
 import { cn } from "@/lib/utils";
 
@@ -22,12 +24,25 @@ const DEPTH_BID = "bg-emerald-500/25";
 const TEXT_ASK = "text-red-700 dark:text-red-400";
 const TEXT_BID = "text-emerald-700 dark:text-emerald-400";
 
+/** One price level after grouping (price + total size). */
+type PriceLevel = { price: number; quantity: number };
+
+/** Group orders by price and sum quantity so each price appears once with total size. */
+function groupByPrice(levels: OrderBookLevel[]): PriceLevel[] {
+  const byPrice = new Map<number, number>();
+  for (const l of levels) {
+    const p = Number(l.price);
+    byPrice.set(p, (byPrice.get(p) ?? 0) + Number(l.quantity));
+  }
+  return Array.from(byPrice.entries(), ([price, quantity]) => ({ price, quantity }));
+}
+
 function DepthRow({
   level,
   maxQty,
   isAsk,
 }: {
-  level: OrderBookLevel;
+  level: PriceLevel;
   maxQty: number;
   isAsk: boolean;
 }) {
@@ -65,19 +80,22 @@ function DepthRow({
 export interface OrderBookProps {
   outcomeId?: string;
   className?: string;
+  /** When provided, order book refetches on SignalR TradeMatched for real-time updates. */
+  exchangeHub?: ReturnType<typeof useExchangeHub>;
 }
 
-export function OrderBook({ outcomeId = "outcome-demo", className }: OrderBookProps) {
-  const { data, error, isLoading, isMock } = useOrderBook(outcomeId);
+export function OrderBook({ outcomeId = "drake-album", className, exchangeHub }: OrderBookProps) {
+  const { data, error, isLoading, isMock, refetch } = useOrderBook(outcomeId);
 
-  const maxAskQty =
-    data?.asks?.length ?
-      Math.max(...data.asks.map((a) => a.quantity), 1)
-    : 1;
-  const maxBidQty =
-    data?.bids?.length ?
-      Math.max(...data.bids.map((b) => b.quantity), 1)
-    : 1;
+  useEffect(() => {
+    if (!exchangeHub) return;
+    return exchangeHub.subscribeToOrderBookInvalidate(outcomeId, refetch);
+  }, [exchangeHub, outcomeId, refetch]);
+
+  const groupedAsks = data?.asks?.length ? groupByPrice(data.asks).sort((a, b) => a.price - b.price) : [];
+  const groupedBids = data?.bids?.length ? groupByPrice(data.bids).sort((a, b) => b.price - a.price) : [];
+  const maxAskQty = groupedAsks.length ? Math.max(...groupedAsks.map((a) => a.quantity), 1) : 1;
+  const maxBidQty = groupedBids.length ? Math.max(...groupedBids.map((b) => b.quantity), 1) : 1;
 
   return (
     <Card className={cn("overflow-hidden", className)}>
@@ -115,8 +133,8 @@ export function OrderBook({ outcomeId = "outcome-demo", className }: OrderBookPr
               </TableRow>
             </TableHeader>
             <TableBody>
-              {/* Asks (Sell) — red, top */}
-              {data.asks.length > 0 && (
+              {/* Asks (Sell) — red, top; grouped by price */}
+              {groupedAsks.length > 0 && (
                 <>
                   <TableRow className="border-0 bg-transparent">
                     <TableCell
@@ -126,9 +144,9 @@ export function OrderBook({ outcomeId = "outcome-demo", className }: OrderBookPr
                       Asks
                     </TableCell>
                   </TableRow>
-                  {data.asks.map((level) => (
+                  {groupedAsks.map((level) => (
                     <DepthRow
-                      key={level.orderId}
+                      key={`ask-${level.price}`}
                       level={level}
                       maxQty={maxAskQty}
                       isAsk
@@ -136,8 +154,8 @@ export function OrderBook({ outcomeId = "outcome-demo", className }: OrderBookPr
                   ))}
                 </>
               )}
-              {/* Bids (Buy) — green, bottom */}
-              {data.bids.length > 0 && (
+              {/* Bids (Buy) — green, bottom; grouped by price */}
+              {groupedBids.length > 0 && (
                 <>
                   <TableRow className="border-0 bg-transparent">
                     <TableCell
@@ -147,9 +165,9 @@ export function OrderBook({ outcomeId = "outcome-demo", className }: OrderBookPr
                       Bids
                     </TableCell>
                   </TableRow>
-                  {data.bids.map((level) => (
+                  {groupedBids.map((level) => (
                     <DepthRow
-                      key={level.orderId}
+                      key={`bid-${level.price}`}
                       level={level}
                       maxQty={maxBidQty}
                       isAsk={false}

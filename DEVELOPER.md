@@ -1,6 +1,6 @@
 # Project Exchange — Developer Guide
 
-This document describes the architecture, core modules, and development practices for **Project Exchange**: a clearing and settlement platform with double-entry accounting, order matching, and celebrity-driven markets.
+This document describes the architecture, core modules, and development practices for **Project Exchange**: a clearing and settlement platform with double-entry accounting. To run the app (backend + frontend), see **[RUN.md](./RUN.md)** — use the commands there (with `cd` from repo root)., order matching, and celebrity-driven markets.
 
 ---
 

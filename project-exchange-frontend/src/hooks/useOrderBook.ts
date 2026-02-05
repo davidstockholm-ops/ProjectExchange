@@ -41,9 +41,10 @@ function getMockOrderBook(outcomeId: string): OrderBookData {
   };
 }
 
-/** Backend returns camelCase in JSON; C# uses PascalCase — normalize to our shape. */
+/** Map Secondary API response (GET /api/secondary/book/{marketId}) to our shape. */
 function mapResponse(raw: {
-  outcomeId: string;
+  marketId?: string;
+  outcomeId?: string;
   bids: Array<{ orderId?: string; OrderId?: string; userId?: string; UserId?: string; price?: number; Price?: number; quantity?: number; Quantity?: number }>;
   asks: Array<{ orderId?: string; OrderId?: string; userId?: string; UserId?: string; price?: number; Price?: number; quantity?: number; Quantity?: number }>;
 }): OrderBookData {
@@ -54,7 +55,7 @@ function mapResponse(raw: {
     quantity: Number(l.quantity ?? l.Quantity ?? 0),
   });
   return {
-    outcomeId: raw.outcomeId,
+    outcomeId: (raw.marketId ?? raw.outcomeId ?? "").toString(),
     bids: (raw.bids ?? []).map(mapLevel),
     asks: (raw.asks ?? []).map(mapLevel),
   };
@@ -65,10 +66,12 @@ export interface UseOrderBookResult {
   error: Error | null;
   isLoading: boolean;
   isMock: boolean;
+  /** Refetch order book (e.g. after SignalR TradeMatched). */
+  refetch: () => void;
 }
 
 /**
- * Fetches order book for an outcome from GET /api/markets/orderbook/{outcomeId}.
+ * Fetches order book from GET /api/secondary/book/{marketId} (matches Swagger).
  * On API failure, returns high-quality mock data so the depth effect is visible in the UI.
  */
 export function useOrderBook(outcomeId: string): UseOrderBookResult {
@@ -76,6 +79,7 @@ export function useOrderBook(outcomeId: string): UseOrderBookResult {
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMock, setIsMock] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!outcomeId.trim()) {
@@ -91,10 +95,10 @@ export function useOrderBook(outcomeId: string): UseOrderBookResult {
     setIsMock(false);
 
     apiFetch<{
-      outcomeId: string;
+      marketId?: string;
       bids: unknown[];
       asks: unknown[];
-    }>(`/api/markets/orderbook/${encodeURIComponent(outcomeId.trim())}`)
+    }>(`/api/secondary/book/${encodeURIComponent(outcomeId.trim())}`)
       .then((raw) => {
         if (cancelled) return;
         setData(mapResponse(raw as Parameters<typeof mapResponse>[0]));
@@ -112,7 +116,9 @@ export function useOrderBook(outcomeId: string): UseOrderBookResult {
     return () => {
       cancelled = true;
     };
-  }, [outcomeId]);
+  }, [outcomeId, refreshKey]);
 
-  return { data, error, isLoading, isMock };
+  const refetch = () => setRefreshKey((k) => k + 1);
+
+  return { data, error, isLoading, isMock, refetch };
 }

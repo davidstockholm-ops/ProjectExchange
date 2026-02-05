@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -14,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useExchangeHub } from "@/hooks/useExchangeHub";
 import { useTradeHistory, type TradeRecord } from "@/hooks/useTradeHistory";
 import { cn } from "@/lib/utils";
 
@@ -34,30 +36,43 @@ function formatTime(iso: string): string {
 export interface TradeHistoryProps {
   outcomeId?: string;
   className?: string;
+  /** When provided, live trades from SignalR are appended to the list. */
+  exchangeHub?: ReturnType<typeof useExchangeHub>;
 }
 
 export function TradeHistory({
-  outcomeId = "outcome-demo",
+  outcomeId = "drake-album",
   className,
+  exchangeHub,
 }: TradeHistoryProps) {
-  const { data, error, isLoading, isMock } = useTradeHistory(outcomeId);
+  const { data, error, isLoading, appendTrade } = useTradeHistory(outcomeId);
+
+  useEffect(() => {
+    if (!exchangeHub) return;
+    return exchangeHub.subscribeToTrade(outcomeId, (liveTrade) => {
+      appendTrade({
+        id: liveTrade.id,
+        time: liveTrade.time,
+        price: liveTrade.price,
+        size: liveTrade.size,
+        side: liveTrade.side,
+      });
+    });
+  }, [exchangeHub, outcomeId, appendTrade]);
 
   return (
     <Card className={cn("overflow-hidden", className)}>
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-semibold">Trade History</CardTitle>
-        <p className="text-muted-foreground text-xs">
-          {isMock && "Using mock data · "}
-          Outcome: {outcomeId}
-        </p>
+        <p className="text-muted-foreground text-xs">Outcome: {outcomeId}</p>
       </CardHeader>
       <CardContent className="pt-0">
-        {error && isMock && (
+        {error && (
           <p
             className="mb-2 text-xs text-amber-600 dark:text-amber-400"
             role="status"
           >
-            API unavailable: {error.message}
+            API: {error.message}
           </p>
         )}
         {isLoading ? (

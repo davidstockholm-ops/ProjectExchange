@@ -51,7 +51,8 @@ public class MasterArchitectureTest
 
             orderBookStore = new OrderBookStore();
             matchingEngine = new MockMatchingEngine(orderBookStore);
-            controller = new SecondaryMarketController(matchingEngine, orderBookStore);
+            var tradeHistoryStore = new TradeHistoryStore();
+            controller = new SecondaryMarketController(matchingEngine, orderBookStore, tradeHistoryStore);
 
             // --- Step 2: Create two Operators and two Users (accounts for operators so ledger can resolve them) ---
             var accountIdA = Guid.NewGuid();

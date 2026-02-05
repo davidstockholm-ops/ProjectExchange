@@ -17,7 +17,8 @@ public class SecondaryMarketControllerTests
     {
         var store = new OrderBookStore();
         var engine = new MockMatchingEngine(store);
-        var controller = new SecondaryMarketController(engine, store);
+        var tradeHistory = new TradeHistoryStore();
+        var controller = new SecondaryMarketController(engine, store, tradeHistory);
 
         var request = new BulkOrderRequest(new[]
         {
@@ -35,7 +36,8 @@ public class SecondaryMarketControllerTests
     {
         var store = new OrderBookStore();
         var engine = new MockMatchingEngine(store);
-        var controller = new SecondaryMarketController(engine, store);
+        var tradeHistory = new TradeHistoryStore();
+        var controller = new SecondaryMarketController(engine, store, tradeHistory);
 
         var request = new BulkOrderRequest(new[]
         {
@@ -63,7 +65,8 @@ public class SecondaryMarketControllerTests
     {
         var store = new OrderBookStore();
         var engine = new MockMatchingEngine(store);
-        var controller = new SecondaryMarketController(engine, store);
+        var tradeHistory = new TradeHistoryStore();
+        var controller = new SecondaryMarketController(engine, store, tradeHistory);
 
         var result = controller.DeleteOrdersByOperator("nonexistent-market", MmOperatorId);
 
@@ -78,7 +81,8 @@ public class SecondaryMarketControllerTests
         book.AddOrder(new Order(Guid.NewGuid(), "u1", MarketId, OrderType.Bid, 0.45m, 10m, MmOperatorId));
         book.AddOrder(new Order(Guid.NewGuid(), "u1", MarketId, OrderType.Ask, 0.55m, 10m, MmOperatorId));
         var engine = new MockMatchingEngine(store);
-        var controller = new SecondaryMarketController(engine, store);
+        var tradeHistory = new TradeHistoryStore();
+        var controller = new SecondaryMarketController(engine, store, tradeHistory);
 
         var result = controller.DeleteOrdersByOperator(MarketId, MmOperatorId);
 
@@ -101,7 +105,8 @@ public class SecondaryMarketControllerTests
         var book = store.GetOrCreateOrderBook(MarketId);
         book.AddOrder(new Order(Guid.NewGuid(), "u1", MarketId, OrderType.Bid, 0.45m, 10m, "apple-pay"));
         var engine = new MockMatchingEngine(store);
-        var controller = new SecondaryMarketController(engine, store);
+        var tradeHistory = new TradeHistoryStore();
+        var controller = new SecondaryMarketController(engine, store, tradeHistory);
 
         var result = controller.DeleteOrdersByOperator(MarketId, MmOperatorId);
 
@@ -109,5 +114,25 @@ public class SecondaryMarketControllerTests
         var response = Assert.IsType<CancelOrdersResponse>(ok.Value);
         Assert.Equal(0, response.CancelledCount);
         Assert.Single(store.GetOrderBook(MarketId)!.Bids);
+    }
+
+    [Fact]
+    public async Task PostOrder_BidThenAskAtSamePrice_MatchRecordedInTradeHistory()
+    {
+        var store = new OrderBookStore();
+        var engine = new MockMatchingEngine(store);
+        var tradeHistory = new TradeHistoryStore();
+        var controller = new SecondaryMarketController(engine, store, tradeHistory);
+
+        await controller.PostOrder(MarketId, 0.85m, 10m, "Buy", "op1", "user1");
+        await controller.PostOrder(MarketId, 0.85m, 10m, "Sell", "op2", "user2");
+
+        var tradesResult = controller.GetTrades(MarketId);
+        var ok = Assert.IsType<OkObjectResult>(tradesResult);
+        var response = Assert.IsType<SecondaryTradesResponse>(ok.Value);
+        Assert.NotEmpty(response.Trades);
+        var trade = response.Trades[0];
+        Assert.Equal(0.85m, trade.Price);
+        Assert.Equal(10m, trade.Quantity);
     }
 }

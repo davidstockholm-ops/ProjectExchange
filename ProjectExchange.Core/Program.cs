@@ -1,9 +1,11 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using ProjectExchange.Accounting.Domain.Abstractions;
 using ProjectExchange.Accounting.Domain.Services;
 using ProjectExchange.Core.Celebrity;
 using ProjectExchange.Core.Infrastructure.Persistence;
+using ProjectExchange.Core.Hubs;
 using ProjectExchange.Core.Markets;
 using ProjectExchange.Core.Social;
 
@@ -107,7 +109,21 @@ builder.Services.AddSwaggerGen(options =>
         options.IncludeXmlComments(xmlPath);
     options.TagActionsBy(api => new[] { api.ActionDescriptor.RouteValues["controller"] ?? "Default" });
 });
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options => options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase);
+
+// CORS: allow Next.js frontend (http://localhost:3000). SignalR negotiation requires AllowCredentials.
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
+
 // Temporarily allow requests to reach the controller so we can log what is failing instead of silent 400.
 builder.Services.Configure<Microsoft.AspNetCore.Mvc.ApiBehaviorOptions>(options => options.SuppressModelStateInvalidFilter = true);
 
@@ -125,8 +141,9 @@ builder.Services.AddScoped<AccountingService>();
 builder.Services.AddScoped<PortfolioService>();
 builder.Services.AddScoped<SettlementService>();
 
-// Shared order books (singleton) and matching engine (scoped)
+// Shared order books and trade history (singletons), matching engine (scoped)
 builder.Services.AddSingleton<IOrderBookStore, OrderBookStore>();
+builder.Services.AddSingleton<ITradeHistoryStore, TradeHistoryStore>();
 builder.Services.AddSingleton<IOutcomeAssetTypeResolver, OutcomeAssetTypeResolver>();
 builder.Services.AddScoped<IMatchingEngine, MockMatchingEngine>();
 builder.Services.AddScoped<MarketService>();
@@ -144,6 +161,13 @@ builder.Services.AddSingleton<IOutcomeOracle, CelebrityOracleService>();
 // IMarketOracle → same instance as IOutcomeOracle (CelebrityOracleService implements both). MarketController injects IMarketOracle without error.
 builder.Services.AddSingleton<IMarketOracle>(sp => sp.GetRequiredService<IOutcomeOracle>());
 builder.Services.AddSingleton<FlashOracleService>();
+
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<MarketMakerStatus>();
+builder.Services.AddSingleton<IMarketMakerStatus>(sp => sp.GetRequiredService<MarketMakerStatus>());
+
+// Auto-trading: places orders every 3s for drake-album; broadcasts matches via SignalR
+builder.Services.AddHostedService<MarketMakerService>();
 
 var app = builder.Build();
 
@@ -171,12 +195,22 @@ app.UseSwaggerUI(c =>
 
 app.UseHttpsRedirection();
 
-app.MapControllers();
+app.UseCors("AllowFrontend");
 
-// Simple health check: GET /health returns 200 when the app is up
-app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "ProjectExchange" }))
-    .WithName("Health")
-    .WithTags("Health");
+app.MapControllers();
+app.MapHub<ExchangeHub>("/hubs/exchange");
+
+// Health: PostgreSQL connectivity + MarketMakerService running
+app.MapGet("/health", async (ProjectExchangeDbContext db, IMarketMakerStatus mmStatus) =>
+{
+    var dbOk = false;
+    try { dbOk = await db.Database.CanConnectAsync(); } catch { /* ignore */ }
+    var mmOk = mmStatus.IsRunning;
+    var status = (dbOk && mmOk) ? "ok" : "degraded";
+    return Results.Ok(new { status, service = "ProjectExchange", database = dbOk ? "connected" : "disconnected", marketMaker = mmOk ? "running" : "stopped" });
+})
+.WithName("Health")
+.WithTags("Health");
 
 app.Run();
 
