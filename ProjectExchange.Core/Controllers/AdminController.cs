@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using ProjectExchange.Accounting.Domain.Services;
+using ProjectExchange.Core.Settlement;
 
 namespace ProjectExchange.Core.Controllers;
 
@@ -9,10 +10,12 @@ namespace ProjectExchange.Core.Controllers;
 public class AdminController : ControllerBase
 {
     private readonly SettlementService _settlementService;
+    private readonly ISettlementGateway _settlementGateway;
 
-    public AdminController(SettlementService settlementService)
+    public AdminController(SettlementService settlementService, ISettlementGateway settlementGateway)
     {
         _settlementService = settlementService ?? throw new ArgumentNullException(nameof(settlementService));
+        _settlementGateway = settlementGateway ?? throw new ArgumentNullException(nameof(settlementGateway));
     }
 
     /// <summary>
@@ -42,6 +45,13 @@ public class AdminController : ControllerBase
             request.WinningAssetType,
             request.SettlementAccountId,
             request.UsdPerToken ?? 1.00m,
+            cancellationToken);
+
+        await _settlementGateway.NotifySettlementAsync(
+            request.OutcomeId,
+            request.WinningAssetType,
+            accountsSettled,
+            totalUsdPaidOut,
             cancellationToken);
 
         var response = new ResolveMarketResponse(accountsSettled, totalUsdPaidOut);

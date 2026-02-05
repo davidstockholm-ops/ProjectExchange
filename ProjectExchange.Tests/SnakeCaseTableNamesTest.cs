@@ -17,6 +17,7 @@ public class SnakeCaseTableNamesTest
         var expectedTables = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "accounts",
+            "domain_events",
             "transactions",
             "journal_entries",
             "ledger_entries",

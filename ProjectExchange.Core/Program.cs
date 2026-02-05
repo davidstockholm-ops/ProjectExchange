@@ -3,10 +3,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using ProjectExchange.Accounting.Domain.Abstractions;
 using ProjectExchange.Accounting.Domain.Services;
+using ProjectExchange.Core.Auditing;
 using ProjectExchange.Core.Celebrity;
 using ProjectExchange.Core.Infrastructure.Persistence;
 using ProjectExchange.Core.Hubs;
 using ProjectExchange.Core.Markets;
+using ProjectExchange.Core.Settlement;
 using ProjectExchange.Core.Social;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,7 +26,7 @@ if (args.Contains("--truncate-tables"))
         .Options;
     using var ctx = new ProjectExchangeDbContext(options);
     // Whitelist: snake_case table names only (no user input). Matches UseSnakeCaseNamingConvention DB.
-    var tables = new[] { "journal_entries", "transactions", "ledger_entries", "orders" };
+    var tables = new[] { "journal_entries", "transactions", "ledger_entries", "orders", "domain_events" };
     var truncated = new List<string>();
     foreach (var tableName in tables)
     {
@@ -45,6 +47,7 @@ if (args.Contains("--truncate-tables"))
             "transactions" => "TRUNCATE TABLE transactions RESTART IDENTITY CASCADE;",
             "ledger_entries" => "TRUNCATE TABLE ledger_entries RESTART IDENTITY CASCADE;",
             "orders" => "TRUNCATE TABLE orders RESTART IDENTITY CASCADE;",
+            "domain_events" => "TRUNCATE TABLE domain_events RESTART IDENTITY CASCADE;",
             _ => throw new ArgumentOutOfRangeException(nameof(tableName), tableName, "Unknown table name.")
         };
     }
@@ -145,6 +148,11 @@ builder.Services.AddScoped<SettlementService>();
 builder.Services.AddSingleton<IOrderBookStore, OrderBookStore>();
 builder.Services.AddSingleton<ITradeHistoryStore, TradeHistoryStore>();
 builder.Services.AddSingleton<IOutcomeAssetTypeResolver, OutcomeAssetTypeResolver>();
+builder.Services.AddScoped<IDomainEventStore, EfDomainEventStore>();
+builder.Services.AddScoped<AuditService>();
+builder.Services.Configure<SettlementGatewayOptions>(
+    builder.Configuration.GetSection(SettlementGatewayOptions.SectionName));
+builder.Services.AddHttpClient<ISettlementGateway, SettlementGateway>();
 builder.Services.AddScoped<IMatchingEngine, MockMatchingEngine>();
 builder.Services.AddScoped<MarketService>();
 

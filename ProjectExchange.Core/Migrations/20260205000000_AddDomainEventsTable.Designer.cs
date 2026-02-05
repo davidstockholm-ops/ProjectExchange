@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using ProjectExchange.Core.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using ProjectExchange.Core.Infrastructure.Persistence;
 namespace ProjectExchange.Core.Migrations
 {
     [DbContext(typeof(ProjectExchangeDbContext))]
-    partial class ProjectExchangeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260205000000_AddDomainEventsTable")]
+    partial class AddDomainEventsTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -52,6 +55,55 @@ namespace ProjectExchange.Core.Migrations
                         .HasDatabaseName("ix_accounts_operator_id_name");
 
                     b.ToTable("accounts", "public");
+                });
+
+            modelBuilder.Entity("ProjectExchange.Core.Infrastructure.Persistence.DomainEventEntity", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("event_type");
+
+                    b.Property<string>("MarketId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("market_id");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload");
+
+                    b.Property<string>("UserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_domain_events");
+
+                    b.HasIndex("MarketId")
+                        .HasDatabaseName("ix_domain_events_market_id");
+
+                    b.HasIndex("OccurredAt")
+                        .HasDatabaseName("ix_domain_events_occurred_at");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_domain_events_user_id");
+
+                    b.ToTable("domain_events", "public");
                 });
 
             modelBuilder.Entity("ProjectExchange.Core.Infrastructure.Persistence.JournalEntryEntity", b =>
@@ -194,55 +246,6 @@ namespace ProjectExchange.Core.Migrations
                         .HasName("pk_transactions");
 
                     b.ToTable("transactions", "public");
-                });
-
-            modelBuilder.Entity("ProjectExchange.Core.Infrastructure.Persistence.DomainEventEntity", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<string>("EventType")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("event_type");
-
-                    b.Property<string>("MarketId")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
-                        .HasColumnName("market_id");
-
-                    b.Property<DateTimeOffset>("OccurredAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("occurred_at");
-
-                    b.Property<string>("Payload")
-                        .IsRequired()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("payload");
-
-                    b.Property<string>("UserId")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_domain_events");
-
-                    b.HasIndex("MarketId")
-                        .HasDatabaseName("ix_domain_events_market_id");
-
-                    b.HasIndex("OccurredAt")
-                        .HasDatabaseName("ix_domain_events_occurred_at");
-
-                    b.HasIndex("UserId")
-                        .HasDatabaseName("ix_domain_events_user_id");
-
-                    b.ToTable("domain_events", "public");
                 });
 
             modelBuilder.Entity("ProjectExchange.Core.Infrastructure.Persistence.JournalEntryEntity", b =>

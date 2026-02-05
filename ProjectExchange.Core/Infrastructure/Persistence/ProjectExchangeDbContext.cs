@@ -26,6 +26,7 @@ public class ProjectExchangeDbContext : DbContext, IUnitOfWork
     public DbSet<JournalEntryEntity> JournalEntries => Set<JournalEntryEntity>();
     public DbSet<LedgerEntryEntity> LedgerEntries => Set<LedgerEntryEntity>();
     public DbSet<OrderEntity> Orders => Set<OrderEntity>();
+    public DbSet<DomainEventEntity> DomainEvents => Set<DomainEventEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -74,6 +75,20 @@ public class ProjectExchangeDbContext : DbContext, IUnitOfWork
             e.Property(x => x.OutcomeId).HasMaxLength(128);
             e.Property(x => x.Price).HasPrecision(18, 4);
             e.Property(x => x.Quantity).HasPrecision(18, 4);
+        });
+
+        modelBuilder.Entity<DomainEventEntity>(e =>
+        {
+            e.ToTable("domain_events");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedOnAdd();
+            e.Property(x => x.EventType).HasMaxLength(64);
+            e.Property(x => x.Payload).HasColumnType("jsonb");
+            e.Property(x => x.MarketId).HasMaxLength(128);
+            e.Property(x => x.UserId).HasMaxLength(128);
+            e.HasIndex(x => x.MarketId);
+            e.HasIndex(x => x.UserId);
+            e.HasIndex(x => x.OccurredAt);
         });
     }
 
