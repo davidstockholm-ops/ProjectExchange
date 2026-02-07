@@ -9,6 +9,7 @@ import {
   SignalRStatus,
   TradeHistory,
 } from "@/components/dashboard";
+import { CopyTradingPanel } from "@/components/CopyTradingPanel";
 import { useExchangeHub } from "@/hooks/useExchangeHub";
 
 export default function DashboardPage() {
@@ -59,7 +60,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Right column (30–40%): Quotes, Net Positions, Quick Order, Liquidity Providers */}
+          {/* Right column (30–40%): Quotes, Net Positions, Quick Order, Liquidity Providers, Copy Trading */}
           <aside className="flex flex-col gap-4 lg:col-span-4">
             <MarketControlPanel
               baseMarketId="drake-album"
@@ -68,6 +69,7 @@ export default function DashboardPage() {
             >
               <PortfolioView userId="user-dashboard" exchangeHub={hub} />
             </MarketControlPanel>
+            <CopyTradingPanel userId="user-dashboard" />
           </aside>
         </div>
       </main>

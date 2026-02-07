@@ -27,7 +27,7 @@ if (args.Contains("--truncate-tables"))
         .Options;
     using var ctx = new ProjectExchangeDbContext(options);
     // Whitelist: snake_case table names only (no user input). Matches UseSnakeCaseNamingConvention DB.
-    var tables = new[] { "journal_entries", "transactions", "ledger_entries", "orders", "domain_events" };
+    var tables = new[] { "journal_entries", "transactions", "ledger_entries", "orders", "domain_events", "followers" };
     var truncated = new List<string>();
     foreach (var tableName in tables)
     {
@@ -49,6 +49,7 @@ if (args.Contains("--truncate-tables"))
             "ledger_entries" => "TRUNCATE TABLE ledger_entries RESTART IDENTITY CASCADE;",
             "orders" => "TRUNCATE TABLE orders RESTART IDENTITY CASCADE;",
             "domain_events" => "TRUNCATE TABLE domain_events RESTART IDENTITY CASCADE;",
+            "followers" => "TRUNCATE TABLE followers RESTART IDENTITY CASCADE;",
             _ => throw new ArgumentOutOfRangeException(nameof(tableName), tableName, "Unknown table name.")
         };
     }
@@ -187,11 +188,15 @@ builder.Services.AddHostedService<MarketMakerService>();
 
 var app = builder.Build();
 
-// Apply pending migrations on startup
+// Apply pending migrations on startup and hydrate copy-trading follow graph from DB
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ProjectExchangeDbContext>();
     db.Database.Migrate();
+
+    var copyTradingService = scope.ServiceProvider.GetRequiredService<CopyTradingService>();
+    var rows = await db.Followers.Select(f => new { f.FollowerId, f.LeaderId }).ToListAsync();
+    copyTradingService.LoadFollowRelations(rows.Select(x => (x.FollowerId, x.LeaderId)));
 }
 
 // Market Holding accounts are created per outcome by CopyTradingEngine on first trade (Clearing & Settlement).

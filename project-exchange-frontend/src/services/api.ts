@@ -1,9 +1,12 @@
 /**
  * Backend API client — Project Exchange Core.
- * Permanent default: http://localhost:5051 (drake-album backend). No env vars required.
- * Order: POST /api/secondary/order. Trade history: GET /api/secondary/trades/{marketId}.
+ * Backend must run on http://localhost:5051 (start with ./scripts/start-backend-only.sh).
+ * Next.js rewrites /api/* to 5051 so requests from the app (port 3000) reach the backend.
  */
-export const API_BASE = "http://localhost:5051";
+export const API_BASE =
+  (typeof window !== "undefined" && window.location.port === "3000"
+    ? "" // use relative /api so Next.js rewrites to http://localhost:5051
+    : process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5051");
 
 export async function apiFetch<T>(
   path: string,
@@ -129,6 +132,41 @@ export async function patchLiquiditySettings(enabledProviders: string[] | null):
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ enabledProviders }),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+// --- Copy-trading: follow a leader (orders are mirrored to follower) ---
+
+export interface FollowResponse {
+  followerId: string;
+  leaderId: string;
+  alreadyFollowing: boolean;
+}
+
+export interface FollowingResponse {
+  followerId: string;
+  leaderIds: string[];
+}
+
+export async function followLeader(
+  followerId: string,
+  leaderId: string
+): Promise<FollowResponse> {
+  const res = await fetch(`${API_BASE}/api/copy-trading/follow`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ followerId, leaderId }),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export async function getFollowing(userId: string): Promise<FollowingResponse> {
+  const params = new URLSearchParams({ userId });
+  const res = await fetch(`${API_BASE}/api/copy-trading/following?${params.toString()}`, {
+    headers: { "Content-Type": "application/json" },
   });
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
   return res.json();

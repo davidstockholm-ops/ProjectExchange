@@ -27,6 +27,7 @@ public class ProjectExchangeDbContext : DbContext, IUnitOfWork
     public DbSet<LedgerEntryEntity> LedgerEntries => Set<LedgerEntryEntity>();
     public DbSet<OrderEntity> Orders => Set<OrderEntity>();
     public DbSet<DomainEventEntity> DomainEvents => Set<DomainEventEntity>();
+    public DbSet<FollowerEntity> Followers => Set<FollowerEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -89,6 +90,17 @@ public class ProjectExchangeDbContext : DbContext, IUnitOfWork
             e.HasIndex(x => x.MarketId);
             e.HasIndex(x => x.UserId);
             e.HasIndex(x => x.OccurredAt);
+        });
+
+        modelBuilder.Entity<FollowerEntity>(e =>
+        {
+            e.ToTable("followers");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedOnAdd();
+            e.Property(x => x.FollowerId).HasMaxLength(128);
+            e.Property(x => x.LeaderId).HasMaxLength(128);
+            e.HasIndex(x => new { x.FollowerId, x.LeaderId }).IsUnique();
+            e.HasIndex(x => x.LeaderId);
         });
     }
 

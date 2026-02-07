@@ -25,6 +25,20 @@ public class CopyTradingService
         lock (set) { set.Add(followerId.Trim()); }
     }
 
+    /// <summary>Loads follow relations from persistence (e.g. at startup). Replaces in-memory state for the given leader→followers map.</summary>
+    public void LoadFollowRelations(IEnumerable<(string FollowerId, string LeaderId)> relations)
+    {
+        if (relations == null) return;
+        _followersByMaster.Clear();
+        foreach (var (followerId, leaderId) in relations)
+        {
+            if (string.IsNullOrWhiteSpace(followerId) || string.IsNullOrWhiteSpace(leaderId) || string.Equals(followerId, leaderId, StringComparison.OrdinalIgnoreCase))
+                continue;
+            var set = _followersByMaster.GetOrAdd(leaderId.Trim(), _ => new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+            lock (set) { set.Add(followerId.Trim()); }
+        }
+    }
+
     /// <summary>Unfollows (optional; not in spec but useful).</summary>
     public void Unfollow(string followerId, string masterId)
     {

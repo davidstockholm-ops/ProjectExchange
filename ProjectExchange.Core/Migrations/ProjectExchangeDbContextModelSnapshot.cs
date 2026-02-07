@@ -245,6 +245,44 @@ namespace ProjectExchange.Core.Migrations
                     b.ToTable("domain_events", "public");
                 });
 
+            modelBuilder.Entity("ProjectExchange.Core.Infrastructure.Persistence.FollowerEntity", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("FollowerId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("follower_id");
+
+                    b.Property<string>("LeaderId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("leader_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_followers");
+
+                    b.HasIndex("FollowerId", "LeaderId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_followers_follower_id_leader_id");
+
+                    b.HasIndex("LeaderId")
+                        .HasDatabaseName("ix_followers_leader_id");
+
+                    b.ToTable("followers", "public");
+                });
+
             modelBuilder.Entity("ProjectExchange.Core.Infrastructure.Persistence.JournalEntryEntity", b =>
                 {
                     b.HasOne("ProjectExchange.Core.Infrastructure.Persistence.TransactionEntity", "Transaction")

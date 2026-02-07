@@ -195,4 +195,8 @@ Use the connection string in `appsettings.json` or override with environment var
 
 Project Exchange is built for **robustness**: clearing and settlement are split, the ledger is strictly double-entry and zero-sum, and every trade is validated (balance, outcome registration, price). The 45-test suite (including high-volume stress and security/integrity tests) and CI pipeline give developers confidence to extend the system without breaking financial invariants.
 
+### Milestones / Status
+
+- **Social Trading Foundation** (2026-02): Full-stack copy-trading is in place and verified. The `followers` table (PostgreSQL) persists follow relations; `CopyTradingController` exposes `POST /api/copy-trading/follow` and `GET /api/copy-trading/following`; the dashboard includes `CopyTradingPanel` with Copy/Following. Integration test `CopyTradingIntegrationTests` verifies the flow: follow relation in DB → Leader places order → two orders in the book (Leader + mirrored Follower). SignalR proxy (`/hubs/*` and `/api/*` rewrites in Next.js) restores real-time connection from the frontend.
+
 <!-- Triggering integration tests -->
