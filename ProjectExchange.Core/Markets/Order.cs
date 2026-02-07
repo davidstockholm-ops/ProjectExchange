@@ -11,12 +11,14 @@ public class Order
     /// <summary>Operator owning the settlement/ledger context. Required for secondary market (Enterprise).</summary>
     public string? OperatorId { get; }
     public string OutcomeId { get; }
+    /// <summary>For binary markets: which contract leg (YES/NO). Null for non-binary or when not specified; can be derived from OutcomeId via BinaryMarketOutcomes.TryParseContractTypeFromOutcomeId.</summary>
+    public ContractType? ContractType { get; }
     public OrderType Type { get; }
     public decimal Price { get; }
     /// <summary>Remaining quantity (decremented when matched).</summary>
     public decimal Quantity { get; private set; }
 
-    public Order(Guid id, string userId, string outcomeId, OrderType type, decimal price, decimal quantity, string? operatorId = null)
+    public Order(Guid id, string userId, string outcomeId, OrderType type, decimal price, decimal quantity, string? operatorId = null, ContractType? contractType = null)
     {
         if (string.IsNullOrWhiteSpace(userId))
             throw new ArgumentException("UserId is required.", nameof(userId));
@@ -31,6 +33,7 @@ public class Order
         UserId = userId.Trim();
         OperatorId = operatorId?.Trim();
         OutcomeId = outcomeId.Trim();
+        ContractType = contractType;
         Type = type;
         Price = price;
         Quantity = quantity;

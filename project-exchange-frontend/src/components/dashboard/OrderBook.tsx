@@ -41,15 +41,36 @@ function DepthRow({
   level,
   maxQty,
   isAsk,
+  onPriceClick,
 }: {
   level: PriceLevel;
   maxQty: number;
   isAsk: boolean;
+  onPriceClick?: (price: number, side: "Buy" | "Sell") => void;
 }) {
   const depthPercent = maxQty > 0 ? Math.min(100, (level.quantity / maxQty) * 100) : 0;
+  const side: "Buy" | "Sell" = isAsk ? "Buy" : "Sell";
 
   return (
-    <TableRow className="relative border-0">
+    <TableRow
+      className={cn(
+        "relative cursor-pointer border-0 transition-colors",
+        onPriceClick && "hover:bg-zinc-100 dark:hover:bg-zinc-800/80"
+      )}
+      onClick={() => onPriceClick?.(level.price, side)}
+      role={onPriceClick ? "button" : undefined}
+      tabIndex={onPriceClick ? 0 : undefined}
+      onKeyDown={
+        onPriceClick
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onPriceClick(level.price, side);
+              }
+            }
+          : undefined
+      }
+    >
       <TableCell
         colSpan={2}
         className="relative h-8 p-0 align-middle"
@@ -82,9 +103,11 @@ export interface OrderBookProps {
   className?: string;
   /** When provided, order book refetches on SignalR TradeMatched for real-time updates. */
   exchangeHub?: ReturnType<typeof useExchangeHub>;
+  /** When provided, price rows are clickable; called with (price, side). Ask → Buy, Bid → Sell. */
+  onPriceClick?: (price: number, side: "Buy" | "Sell") => void;
 }
 
-export function OrderBook({ outcomeId = "drake-album", className, exchangeHub }: OrderBookProps) {
+export function OrderBook({ outcomeId = "drake-album", className, exchangeHub, onPriceClick }: OrderBookProps) {
   const { data, error, isLoading, isMock, refetch } = useOrderBook(outcomeId);
 
   useEffect(() => {
@@ -104,6 +127,7 @@ export function OrderBook({ outcomeId = "drake-album", className, exchangeHub }:
         <p className="text-muted-foreground text-xs">
           {isMock && "Using mock data · "}
           Outcome: {outcomeId}
+          {onPriceClick && " · Click a price to use in Quick Order"}
         </p>
       </CardHeader>
       <CardContent className="pt-0">
@@ -150,6 +174,7 @@ export function OrderBook({ outcomeId = "drake-album", className, exchangeHub }:
                       level={level}
                       maxQty={maxAskQty}
                       isAsk
+                      onPriceClick={onPriceClick}
                     />
                   ))}
                 </>
@@ -171,6 +196,7 @@ export function OrderBook({ outcomeId = "drake-album", className, exchangeHub }:
                       level={level}
                       maxQty={maxBidQty}
                       isAsk={false}
+                      onPriceClick={onPriceClick}
                     />
                   ))}
                 </>

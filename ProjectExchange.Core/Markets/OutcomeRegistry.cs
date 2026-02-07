@@ -17,4 +17,14 @@ public class OutcomeRegistry : IOutcomeRegistry
             return;
         _outcomes.TryAdd(outcomeId.Trim(), 0);
     }
+
+    /// <inheritdoc />
+    public void RegisterBinaryMarket(string baseMarketId)
+    {
+        if (string.IsNullOrWhiteSpace(baseMarketId))
+            return;
+        var (yesId, noId) = BinaryMarketOutcomes.GetBothOutcomeIds(baseMarketId.Trim());
+        _outcomes.TryAdd(yesId, 0);
+        _outcomes.TryAdd(noId, 0);
+    }
 }

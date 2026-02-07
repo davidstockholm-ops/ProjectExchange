@@ -7,6 +7,7 @@ using ProjectExchange.Core.Auditing;
 using ProjectExchange.Core.Celebrity;
 using ProjectExchange.Core.Infrastructure.Persistence;
 using ProjectExchange.Core.Hubs;
+using ProjectExchange.Core.Liquidity;
 using ProjectExchange.Core.Markets;
 using ProjectExchange.Core.Settlement;
 using ProjectExchange.Core.Social;
@@ -152,9 +153,16 @@ builder.Services.AddScoped<IDomainEventStore, EfDomainEventStore>();
 builder.Services.AddScoped<AuditService>();
 builder.Services.Configure<SettlementGatewayOptions>(
     builder.Configuration.GetSection(SettlementGatewayOptions.SectionName));
+builder.Services.Configure<LiquiditySettings>(builder.Configuration.GetSection(LiquiditySettings.SectionName));
+builder.Services.AddSingleton<LiquiditySettingsRuntime>();
 builder.Services.AddHttpClient<ISettlementGateway, SettlementGateway>();
 builder.Services.AddScoped<IMatchingEngine, MockMatchingEngine>();
 builder.Services.AddScoped<MarketService>();
+builder.Services.AddScoped<IPositionService, PositionService>();
+// Liquidity: multiple providers (Internal, Partner_A, Partner_B). Inject IEnumerable<ILiquidityProvider> and filter by LiquiditySettings.
+builder.Services.AddSingleton<ILiquidityProvider, InternalLiquidityProvider>();
+builder.Services.AddSingleton<ILiquidityProvider>(sp => new PartnerLiquidityProvider("Partner_A"));
+builder.Services.AddSingleton<ILiquidityProvider>(sp => new PartnerLiquidityProvider("Partner_B"));
 
 // Social copy-trading: follow graph (singleton)
 builder.Services.AddSingleton<CopyTradingService>();
@@ -189,10 +197,21 @@ using (var scope = app.Services.CreateScope())
 // Market Holding accounts are created per outcome by CopyTradingEngine on first trade (Clearing & Settlement).
 
 // Configure the HTTP request pipeline.
+// Exception logging: log full exception to terminal so we can see exact cause of 500s.
 app.Use(async (context, next) =>
 {
     Console.WriteLine($"[GLOBAL LOG] {context.Request.Method} {context.Request.Path}");
-    await next();
+    try
+    {
+        await next(context);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("[EXCEPTION] --- Full exception ---");
+        Console.WriteLine(ex.ToString());
+        Console.WriteLine("[EXCEPTION] --- End ---");
+        throw;
+    }
 });
 app.UseSwagger();
 app.UseSwaggerUI(c =>

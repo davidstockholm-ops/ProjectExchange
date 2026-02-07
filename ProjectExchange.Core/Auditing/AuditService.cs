@@ -17,36 +17,54 @@ public class AuditService
 
     /// <summary>
     /// Returns all domain events for the given market (order placed, trade matched), oldest first.
+    /// Returns empty list on DB/query errors and logs to console.
     /// </summary>
     public async Task<IReadOnlyList<AuditEventDto>> GetByMarketIdAsync(string marketId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(marketId))
             return Array.Empty<AuditEventDto>();
 
-        var list = await _dbContext.DomainEvents
-            .AsNoTracking()
-            .Where(e => e.MarketId == marketId.Trim())
-            .OrderBy(e => e.Id)
-            .Select(e => new AuditEventDto(e.EventType, e.Payload, e.OccurredAt, e.MarketId, e.UserId))
-            .ToListAsync(cancellationToken);
-        return list;
+        try
+        {
+            var list = await _dbContext.DomainEvents
+                .AsNoTracking()
+                .Where(e => e.MarketId == marketId.Trim())
+                .OrderBy(e => e.Id)
+                .Select(e => new AuditEventDto(e.EventType, e.Payload, e.OccurredAt, e.MarketId, e.UserId))
+                .ToListAsync(cancellationToken);
+            return list;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[AuditService] GetByMarketIdAsync failed (returning empty list): {ex}");
+            return Array.Empty<AuditEventDto>();
+        }
     }
 
     /// <summary>
     /// Returns all domain events where the given user is involved (order or match side), oldest first.
+    /// Returns empty list on DB/query errors (e.g. missing domain_events table) and logs to console.
     /// </summary>
     public async Task<IReadOnlyList<AuditEventDto>> GetByUserIdAsync(string userId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(userId))
             return Array.Empty<AuditEventDto>();
 
-        var list = await _dbContext.DomainEvents
-            .AsNoTracking()
-            .Where(e => e.UserId == userId.Trim())
-            .OrderBy(e => e.Id)
-            .Select(e => new AuditEventDto(e.EventType, e.Payload, e.OccurredAt, e.MarketId, e.UserId))
-            .ToListAsync(cancellationToken);
-        return list;
+        try
+        {
+            var list = await _dbContext.DomainEvents
+                .AsNoTracking()
+                .Where(e => e.UserId == userId.Trim())
+                .OrderBy(e => e.Id)
+                .Select(e => new AuditEventDto(e.EventType, e.Payload, e.OccurredAt, e.MarketId, e.UserId))
+                .ToListAsync(cancellationToken);
+            return list;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[AuditService] GetByUserIdAsync failed (returning empty list): {ex}");
+            return Array.Empty<AuditEventDto>();
+        }
     }
 }
 
