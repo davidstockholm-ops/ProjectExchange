@@ -18,10 +18,11 @@ public class SnakeCaseTableNamesTest
         {
             "accounts",
             "domain_events",
-            "transactions",
+            "followers",
             "journal_entries",
             "ledger_entries",
-            "orders"
+            "orders",
+            "transactions"
         };
 
         foreach (var entityType in context.Model.GetEntityTypes())

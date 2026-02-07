@@ -16,7 +16,7 @@ namespace ProjectExchange.Tests.Infrastructure;
 /// In CI (GitHub Actions): the workflow sets ConnectionStrings__DefaultConnection to the service container
 /// at Host=localhost;Port=5432;Database=projectexchange_test;Username=postgres;Password=postgres.
 /// All contexts use UseSnakeCaseNamingConvention. All raw SQL uses lowercase only for tables and columns
-/// (e.g. public.ledger_entries, value, amount); no double-quoted identifiers. Tables: ledger_entries, accounts, transactions, journal_entries, orders.
+/// (e.g. public.ledger_entries, value, amount); no double-quoted identifiers. Tables: ledger_entries, accounts, transactions, journal_entries, orders, followers, domain_events.
 /// </summary>
 public class InfrastructureSanityTests
 {
@@ -71,19 +71,23 @@ public class InfrastructureSanityTests
     /// <summary>
     /// Verifierar att ProjectExchangeDbContext mappar entiteter till snake_case-tabeller
     /// (t.ex. LedgerEntryEntity → ledger_entries) så att PostgreSQL inte får "relation does not exist".
+    /// Checklist: must match every DbSet + ToTable() in ProjectExchangeDbContext (accounts, domain_events,
+    /// followers, journal_entries, ledger_entries, orders, transactions). Add new table here when adding entities.
     /// </summary>
     [Fact]
     public void SnakeCaseNaming_DbContext_MapsEntitiesToSnakeCaseTables()
     {
         var context = EnterpriseTestSetup.CreateFreshDbContext();
+        // One entry per DbSet in ProjectExchangeDbContext.OnModelCreating ToTable(...)
         var expectedTables = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "accounts",
-            "domain_events",
-            "transactions",
-            "journal_entries",
-            "ledger_entries",
-            "orders"
+            "accounts",           // AccountEntity
+            "domain_events",      // DomainEventEntity
+            "followers",          // FollowerEntity (copy-trading)
+            "journal_entries",    // JournalEntryEntity
+            "ledger_entries",     // LedgerEntryEntity
+            "orders",             // OrderEntity
+            "transactions"        // TransactionEntity
         };
 
         foreach (var entityType in context.Model.GetEntityTypes())
