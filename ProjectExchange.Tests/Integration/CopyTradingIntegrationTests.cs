@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using ProjectExchange.Accounting.Domain.Abstractions;
 using ProjectExchange.Accounting.Domain.Entities;
 using ProjectExchange.Accounting.Domain.Enums;
@@ -47,8 +48,8 @@ public class CopyTradingIntegrationTests
         await context.SaveChangesAsync();
 
         var copyTradingService = new CopyTradingService();
-        var relations = await context.Followers.Select(f => (f.FollowerId, f.LeaderId)).ToListAsync();
-        copyTradingService.LoadFollowRelations(relations);
+        var rows = await context.Followers.Select(f => new { f.FollowerId, f.LeaderId }).ToListAsync();
+        copyTradingService.LoadFollowRelations(rows.Select(x => (x.FollowerId, x.LeaderId)));
 
         var orderBookStore = new OrderBookStore();
         var marketService = new MarketService(
